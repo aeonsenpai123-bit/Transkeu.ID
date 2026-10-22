@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+dist/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Salinan PDF sumber (besar); daftar URL ada di docs/sumber/apbn-kita/daftar.txt
+docs/sumber/apbn-kita/*.pdf
+docs/sumber/apbn-kita/teks/
+docs/sumber/apbn-2026/*.pdf

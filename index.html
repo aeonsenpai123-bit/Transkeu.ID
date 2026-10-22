@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Transkeu.ID: Uang Rakyat ke Mana?</title>
+  <meta name="description" content="Pemandu literasi fiskal: tanya APBN dengan bahasa sehari-hari, setiap angka menunjukkan dokumen resmi asalnya. Proyek mahasiswa, bukan situs resmi pemerintah.">
+  <meta name="theme-color" content="#0a1f44">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <a class="lompat" href="#input-tanya">Langsung ke kolom tanya</a>
+  <p class="pita" role="note">Proyek mahasiswa, bukan situs resmi pemerintah</p>
+
+  <header class="atas">
+    <div class="wrap">
+      <div class="baris">
+        <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+        <div>
+          <div class="merek">Transkeu<span>.ID</span></div>
+          <div class="sub-merek">Pemandu literasi fiskal APBN</div>
+        </div>
+      </div>
+      <nav class="tab" role="tablist" aria-label="Menu utama">
+        <button role="tab" id="t-beranda" data-ikon="beranda" aria-controls="v-beranda" aria-selected="true">Beranda</button>
+        <button role="tab" id="t-tanya" data-ikon="kilau" aria-controls="v-tanya" aria-selected="false">Tanya AI</button>
+        <button role="tab" id="t-kamus" data-ikon="kamus" aria-controls="v-kamus" aria-selected="false">Kamus</button>
+        <button role="tab" id="t-kuis" data-ikon="kuis" aria-controls="v-kuis" aria-selected="false">Kuis</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section id="v-beranda" role="tabpanel" aria-labelledby="t-beranda">
+      <div class="hero">
+        <div class="wrap">
+          <span class="lencana" data-ikon="kilau">Literasi fiskal · APBN 2026</span>
+          <h1>Uang rakyat <em>dipakai ke mana?</em></h1>
+          <p class="lead">Tanya apa saja soal APBN dengan bahasa sehari-hari. Setiap angka bisa diketuk untuk melihat dokumen resmi asalnya.</p>
+          <form class="hero-cari" id="hero-cari">
+            <label class="sr-only" for="hero-input">Pertanyaan tentang APBN</label>
+            <input id="hero-input" type="text" autocomplete="off" maxlength="300" placeholder="Contoh: pajak saya dipakai buat apa?">
+            <button class="tombol tombol-utama" type="submit" data-ikon="kirim">Tanya</button>
+          </form>
+          <div class="saran" id="saran-hero"></div>
+        </div>
+      </div>
+      <div class="wrap" id="isi-beranda"></div>
+    </section>
+
+    <section id="v-tanya" role="tabpanel" aria-labelledby="t-tanya" hidden>
+      <div class="wrap obrolan" id="obrolan" aria-live="polite"></div>
+    </section>
+
+    <section id="v-kamus" role="tabpanel" aria-labelledby="t-kamus" hidden>
+      <div class="wrap halaman">
+        <div class="kepala-bagian">
+          <span class="lencana" data-ikon="kamus">Kamus istilah</span>
+          <h2>Istilah APBN, versi sederhana</h2>
+          <p>Kata-kata yang sering muncul di berita anggaran, dijelaskan tanpa jargon.</p>
+        </div>
+        <label class="sr-only" for="cari-istilah">Cari istilah</label>
+        <input class="cari" id="cari-istilah" type="search" placeholder="Cari istilah, mis. pagu">
+        <dl class="kamus" id="daftar-istilah"></dl>
+      </div>
+    </section>
+
+    <section id="v-kuis" role="tabpanel" aria-labelledby="t-kuis" hidden>
+      <div class="wrap halaman" id="kuis"></div>
+    </section>
+
+    <div class="wrap">
+      <footer class="kaki">
+        <p><strong>Proyek mahasiswa, bukan situs resmi pemerintah.</strong> Prototipe mata kuliah Akuntansi Sektor Publik, Universitas Negeri Jakarta.</p>
+        <p>Angka hanya diambil dari tabel fakta yang menyebut dokumen, halaman, dan kutipannya, lalu dihitung oleh program. AI hanya menjelaskan; jika datanya tidak ada, Transkeu.ID tidak menebak.</p>
+        <p><button class="tombol" id="unduh-umpan" type="button" data-ikon="dokumen">Unduh umpan balik di perangkat ini</button></p>
+      </footer>
+    </div>
+  </main>
+
+  <div class="tanya-bar" id="tanya-bar">
+    <div class="wrap">
+      <div class="chips" id="chips" aria-label="Saran pertanyaan"></div>
+      <form class="form-tanya" id="form-tanya">
+        <label class="sr-only" for="input-tanya">Pertanyaan tentang APBN</label>
+        <input id="input-tanya" type="text" autocomplete="off" enterkeyhint="send" placeholder="Tanya soal uang negara…" maxlength="300">
+        <button class="tombol tombol-utama tombol-kirim" type="submit" data-ikon="kirim" aria-label="Kirim pertanyaan"></button>
+      </form>
+    </div>
+  </div>
+
+  <dialog class="sheet" id="sheet" aria-labelledby="sheet-judul">
+    <div class="sheet-pegangan" aria-hidden="true"></div>
+    <div class="sheet-isi">
+      <div class="sheet-kepala">
+        <h2 id="sheet-judul"></h2>
+        <button class="tutup" type="button" id="sheet-tutup" aria-label="Tutup" data-ikon="tutup"></button>
+      </div>
+      <div id="sheet-badan"></div>
+    </div>
+  </dialog>
+  <p class="toast" id="toast" role="status" hidden></p>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

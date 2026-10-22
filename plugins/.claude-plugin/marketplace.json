@@ -1,0 +1,9 @@
+{
+  "name": "transkeu-local",
+  "owner": { "name": "Nisaa" },
+  "description": "Local copies of the plugins used in the Transkeu.ID project.",
+  "plugins": [
+    { "name": "mattpocock-skills", "source": "./mattpocock-skills", "description": "Matt Pocock's engineering skills: grilling, spec and ticket flows, TDD, code review." },
+    { "name": "ui-ux-pro-max", "source": "./ui-ux-pro-max", "description": "UI/UX design intelligence: styles, palettes, fonts, UX guidelines, stack guidance." }
+  ]
+}
