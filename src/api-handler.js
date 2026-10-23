@@ -79,7 +79,7 @@ export async function tanganiTanya({ badan = {}, ip = '127.0.0.1' } = {}) {
     }
   }
 
-  // Jika AI tidak aktif (tidak ada ANTHROPIC_API_KEY)
+  // Jika AI tidak aktif (tidak ada GEMINI_API_KEY)
   const hasilDasar = jawab(pertanyaan, data);
   return {
     kode: 200,

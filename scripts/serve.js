@@ -55,4 +55,4 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404).end('Tidak ditemukan');
   }
-}).listen(port, () => console.log(`Transkeu.ID jalan di http://localhost:${port} (AI: ${adaKunci() ? 'aktif' : 'mati, isi ANTHROPIC_API_KEY di .env'})`));
+}).listen(port, () => console.log(`Transkeu.ID jalan di http://localhost:${port} (AI: ${adaKunci() ? 'aktif' : 'mati, isi GEMINI_API_KEY di .env'})`));

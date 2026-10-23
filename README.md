@@ -20,7 +20,7 @@ Butuh Node.js 22 atau lebih baru. Tanpa langkah build rumit.
 
 ```powershell
 npm install
-copy .env.example .env   # lalu isi ANTHROPIC_API_KEY di .env (opsional)
+copy .env.example .env   # lalu isi GEMINI_API_KEY di .env (opsional)
 npm start                # buka http://localhost:5173
 npm test                 # menjalankan 42 tes unit otomatis
 ```
@@ -29,18 +29,18 @@ npm test                 # menjalankan 42 tes unit otomatis
 
 Situs dipublikasikan di Vercel dengan arsitektur serverless:
 - **Frontend:** Berkas statis (`index.html`, `src/styles.css`, `src/app.js`).
-- **Backend:** Vercel Serverless Function di `api/tanya.js` (didukung `src/api-handler.js`).
+- **Backend:** Vercel Serverless Function di `api/tanya.js` (didukung `src/api-handler.js` dan `@google/genai`).
 - **Routing:** Dikonfigurasi melalui `vercel.json`.
 
 ### Pengaturan Environment Variable di Vercel
 
-Agar Tanya AI aktif di Vercel, tambahkan variabel lingkungan di dashboard proyek Vercel:
+Agar Tanya AI aktif di Vercel dengan LLM Google Gemini:
 
 1. Buka dashboard proyek Anda di [vercel.com](https://vercel.com).
 2. Pilih proyek **transkeu-id** -> Masuk ke tab **Settings** -> **Environment Variables**.
 3. Tambahkan variabel berikut:
-   - `ANTHROPIC_API_KEY`: Kunci API Claude dari Anthropic Console (mis. `sk-ant-api03-...`).
-   - `ANTHROPIC_MODEL` *(Opsional)*: Nama model, misalnya `claude-3-5-sonnet-20241022` atau `claude-3-5-haiku-20241022`.
+   - `GEMINI_API_KEY`: Kunci API Google Gemini (dapat dibuat gratis di [Google AI Studio](https://aistudio.google.com/)).
+   - `GEMINI_MODEL` *(Opsional)*: Nama model, misalnya `gemini-2.5-flash` (bawaan) atau `gemini-1.5-flash`.
    - `BATAS_TANYA_HARIAN` *(Opsional)*: Batas pertanyaan AI per IP per hari (bawaan: `50`).
 4. Lakukan **Redeploy** (atau *git push*) agar variabel lingkungan mulai berlaku.
 5. Jika variabel belum diisi, sistem secara otomatis dan aman menggunakan **Mode Dasar** (jawaban berbasis aturan tabel fakta).
@@ -51,7 +51,7 @@ Agar Tanya AI aktif di Vercel, tambahkan variabel lingkungan di dashboard proyek
 | `src/visual.js` | Validasi dan rendering visual interaktif (batang, komposisi, garis, kartu angka) |
 | `src/api-handler.js` | Handler backend terpadu untuk POST `/api/tanya` (Vercel & lokal) |
 | `api/tanya.js` | Vercel Serverless Function endpoint |
-| `src/ai.js` | Integrasi Anthropic Claude dengan persona pemandu literasi fiskal |
+| `src/ai.js` | Integrasi Google Gemini (`@google/genai`) dengan persona pemandu literasi fiskal |
 | `src/penjaga.js` | Penjaga keamanan AI: memvalidasi teks dan mengisi placeholder dari tabel fakta |
 | `src/mesin.js` | Mesin aturan deterministik cadangan (Mode Dasar) |
 | `src/hitung.js` | Format angka gaya Indonesia dan kalkulasi persentase |
