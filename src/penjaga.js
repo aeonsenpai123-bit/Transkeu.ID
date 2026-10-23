@@ -2,6 +2,7 @@
 // Teks yang memuat angka lain ditolak seluruhnya, lalu aplikasi memakai mesin aturan.
 import { formatNilai, persenRealisasi } from './hitung.js';
 import { PESAN_TIDAK_TERSEDIA, PORTAL_RESMI } from './mesin.js';
+import { validasiVisual, visualOtomatis } from './visual.js';
 
 const URUTAN_JENIS = { Anggaran: 0, Outlook: 1, Realisasi: 2 };
 const PLACEHOLDER = /\{\{\s*([a-z0-9-]+)(?:\|(posisi))?\s*\}\}/g;
@@ -58,6 +59,8 @@ export function isiJawaban(keluaran, { fakta, kegunaan = [], istilah = [] }) {
   });
 
   const guna = new Map(kegunaan.map((k) => [k.id, k]));
+  const visual = validasiVisual(keluaran.visual, { fakta }) ?? visualOtomatis(angka);
+
   return {
     status: 'ok',
     ringkas: isi(keluaran.jawaban),
@@ -65,6 +68,7 @@ export function isiJawaban(keluaran, { fakta, kegunaan = [], istilah = [] }) {
     hitung,
     kegunaan: (keluaran.kegunaan_ids ?? []).map((id) => guna.get(id)).filter(Boolean),
     istilah: (keluaran.istilah ?? []).map((n) => istilah.find((i) => i.istilah === n)).filter(Boolean),
+    visual,
     batasan: keluaran.batasan ? [isi(keluaran.batasan)] : [],
     lanjutan: keluaran.lanjutan ?? [],
     ai: true,

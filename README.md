@@ -1,27 +1,65 @@
 # Transkeu.ID
 
-Asisten literasi fiskal: warga bertanya tentang APBN, jawaban selalu menyebut sumber resmi yang bisa diperiksa. Lihat `docs/PRD.md`.
+Asisten literasi fiskal: warga bertanya tentang APBN, jawaban selalu menyebut sumber resmi yang bisa diperiksa. Prototipe penelitian Akuntansi Sektor Publik, Universitas Negeri Jakarta. Daring di [transkeu-id.vercel.app](https://transkeu-id.vercel.app/).
 
-## Menjalankan prototipe
+## Fitur Utama
 
-Butuh Node.js 22 atau lebih baru. Tanpa build.
+1. **Tanya AI & Mesin Aturan Cadangan (F1):** Penjelasan APBN berbasis LLM dengan penjaga ketat (`src/penjaga.js`). Jika AI tidak aktif atau mengalami kendala, sistem secara transparan beralih ke Mode Dasar (aturan sistem) tanpa mengarang angka.
+2. **Kartu Sumber (F2):** Setiap angka dapat diklik untuk membuka bottom sheet berisi dokumen resmi, penerbit, nomor halaman/tabel, kutipan asli, dan tautan PDF langsung.
+3. **Kartu Topik & Arus Kas APBN (F3):** Visualisasi dompet negara, pembagian belanja pemerintah pusat vs TKD, serta 6 kartu topik utama (Pendidikan, Kesehatan, Perlindungan Sosial, Infrastruktur, Subsidi Energi, Pajak).
+4. **Visual Interaktif Percakapan:** Grafik batang perbandingan alokasi vs realisasi, grafik komposisi proporsi belanja, grafik garis tren periode, serta tampilan tabel data aksesibel.
+5. **Kamus Istilah (F4):** 38+ istilah fiskal dan komparasi tanpa jargon teknis, dengan pencarian real-time dan tag interaktif di dalam jawaban.
+6. **Umpan Balik & Ekspor Data (F5):** Laporan akurasi angka dan ekspor JSON untuk pengujian empiris.
+7. **Kuis Pemahaman (F6):** Pre-test & Post-test 5 soal pemahaman konsep fiskal untuk mengukur peningkatan literasi pengguna.
+8. **Jejak Anggaran (Paper Inovatif):** Menelusuri rantai kebijakan Alokasi -> Realisasi Belanja -> Capaian Fisik Program Nyata (PIP, KIP Kuliah, BOS, PBI JKN, Skrining Kesehatan, Jalan Nasional, Subsidi Energi).
+9. **Aspirasi Berbasis Data (Paper Inovatif):** Panduan warga menyusun draf aspirasi dan kritik kebijakan publik yang santun dan berbasis data anggaran, dilengkapi tautan kanal resmi nasional (SP4N-LAPOR!, Portal DPR RI, Kemenkeu WISE, Ombudsman RI).
+
+## Menjalankan Prototipe Lokal
+
+Butuh Node.js 22 atau lebih baru. Tanpa langkah build rumit.
 
 ```powershell
 npm install
-copy .env.example .env   # lalu isi ANTHROPIC_API_KEY di .env
+copy .env.example .env   # lalu isi ANTHROPIC_API_KEY di .env (opsional)
 npm start                # buka http://localhost:5173
-npm test                 # tes hitung, mesin jawab, penjaga AI, dan validasi tabel fakta
+npm test                 # menjalankan 42 tes unit otomatis
 ```
 
-**Cara kerja AI (Tanya AI).** Server (`scripts/serve.js`) memanggil Claude (`src/ai.js`) dengan persona pemandu literasi fiskal dan seluruh tabel fakta. Model hanya boleh memilih id baris dan menulis penjelasan dengan placeholder `{{id}}`; `src/penjaga.js` mengisi angka dari tabel fakta, menghitung persentase dengan kode, dan menolak jawaban yang memuat angka lain. Jika AI mati (tanpa kunci), gagal, atau ditolak penjaga, browser memakai mesin aturan (`src/mesin.js`) dan menandainya "Mode dasar". Kunci API hanya ada di server. Batas pertanyaan AI per IP per hari diatur `BATAS_TANYA_HARIAN`.
+## Konfigurasi Deployment Vercel
+
+Situs dipublikasikan di Vercel dengan arsitektur serverless:
+- **Frontend:** Berkas statis (`index.html`, `src/styles.css`, `src/app.js`).
+- **Backend:** Vercel Serverless Function di `api/tanya.js` (didukung `src/api-handler.js`).
+- **Routing:** Dikonfigurasi melalui `vercel.json`.
+
+### Pengaturan Environment Variable di Vercel
+
+Agar Tanya AI aktif di Vercel, tambahkan variabel lingkungan di dashboard proyek Vercel:
+
+1. Buka dashboard proyek Anda di [vercel.com](https://vercel.com).
+2. Pilih proyek **transkeu-id** -> Masuk ke tab **Settings** -> **Environment Variables**.
+3. Tambahkan variabel berikut:
+   - `ANTHROPIC_API_KEY`: Kunci API Claude dari Anthropic Console (mis. `sk-ant-api03-...`).
+   - `ANTHROPIC_MODEL` *(Opsional)*: Nama model, misalnya `claude-3-5-sonnet-20241022` atau `claude-3-5-haiku-20241022`.
+   - `BATAS_TANYA_HARIAN` *(Opsional)*: Batas pertanyaan AI per IP per hari (bawaan: `50`).
+4. Lakukan **Redeploy** (atau *git push*) agar variabel lingkungan mulai berlaku.
+5. Jika variabel belum diisi, sistem secara otomatis dan aman menggunakan **Mode Dasar** (jawaban berbasis aturan tabel fakta).
 
 | Path | Isi |
 | --- | --- |
-| `index.html`, `src/styles.css`, `src/app.js` | Tampilan (F1 sampai F6) |
-| `src/mesin.js` | Memahami pertanyaan dan memilih baris tabel fakta (berbasis kata kunci, belum memakai model bahasa) |
-| `src/hitung.js` | Format angka dan persentase realisasi; satu-satunya tempat perhitungan |
-| `data/fakta.js` | Tabel fakta: satu baris per angka, lengkap dengan dokumen, halaman, kutipan, URL |
+| `index.html`, `src/styles.css`, `src/app.js` | Tampilan aplikasi (F1 sampai F6, Jejak Anggaran, Aspirasi Data) |
+| `src/visual.js` | Validasi dan rendering visual interaktif (batang, komposisi, garis, kartu angka) |
+| `src/api-handler.js` | Handler backend terpadu untuk POST `/api/tanya` (Vercel & lokal) |
+| `api/tanya.js` | Vercel Serverless Function endpoint |
+| `src/ai.js` | Integrasi Anthropic Claude dengan persona pemandu literasi fiskal |
+| `src/penjaga.js` | Penjaga keamanan AI: memvalidasi teks dan mengisi placeholder dari tabel fakta |
+| `src/mesin.js` | Mesin aturan deterministik cadangan (Mode Dasar) |
+| `src/hitung.js` | Format angka gaya Indonesia dan kalkulasi persentase |
+| `data/fakta.js` | Tabel fakta: baris data resmi dengan kutipan dokumen dan tautan |
+| `data/jejak.js` | Data Jejak Anggaran: Alokasi, Realisasi, dan Capaian fisik program |
+| `data/aspirasi.js` | Perumusan draf aspirasi publik dan daftar kanal resmi pemerintah |
 | `data/topik.js`, `data/istilah.js`, `data/kuis.js` | Kartu topik, kamus istilah, soal kuis |
+| `vercel.json` | Konfigurasi runtime Vercel dan header keamanan |
 
 Sumber angka saat ini: 23 PDF APBN KiTa (Kemenkeu) yang daftar URL-nya ada di `docs/sumber/apbn-kita/daftar.txt`. Unduh ulang lalu cari angka beserta halamannya dengan:
 

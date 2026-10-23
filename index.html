@@ -27,6 +27,8 @@
       <nav class="tab" role="tablist" aria-label="Menu utama">
         <button role="tab" id="t-beranda" data-ikon="beranda" aria-controls="v-beranda" aria-selected="true">Beranda</button>
         <button role="tab" id="t-tanya" data-ikon="kilau" aria-controls="v-tanya" aria-selected="false">Tanya AI</button>
+        <button role="tab" id="t-jejak" data-ikon="jejak" aria-controls="v-jejak" aria-selected="false">Jejak Anggaran</button>
+        <button role="tab" id="t-aspirasi" data-ikon="aspirasi" aria-controls="v-aspirasi" aria-selected="false">Aspirasi Data</button>
         <button role="tab" id="t-kamus" data-ikon="kamus" aria-controls="v-kamus" aria-selected="false">Kamus</button>
         <button role="tab" id="t-kuis" data-ikon="kuis" aria-controls="v-kuis" aria-selected="false">Kuis</button>
       </nav>
@@ -53,6 +55,14 @@
 
     <section id="v-tanya" role="tabpanel" aria-labelledby="t-tanya" hidden>
       <div class="wrap obrolan" id="obrolan" aria-live="polite"></div>
+    </section>
+
+    <section id="v-jejak" role="tabpanel" aria-labelledby="t-jejak" hidden>
+      <div class="wrap halaman" id="jejak-anggaran"></div>
+    </section>
+
+    <section id="v-aspirasi" role="tabpanel" aria-labelledby="t-aspirasi" hidden>
+      <div class="wrap halaman" id="aspirasi-data"></div>
     </section>
 
     <section id="v-kamus" role="tabpanel" aria-labelledby="t-kamus" hidden>

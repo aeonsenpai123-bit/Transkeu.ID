@@ -2,6 +2,7 @@
 // Tidak ada angka yang dibuat di sini; semua angka berasal dari baris `fakta`.
 // shortcut: pencocokan kata kunci, bukan model bahasa; ganti dengan LLM yang hanya memilih id baris bila pertanyaan makin beragam.
 import { formatNilai, persenRealisasi } from './hitung.js';
+import { visualOtomatis } from './visual.js';
 
 export const PESAN_TIDAK_TERSEDIA = 'Data ini belum tersedia di dokumen yang dimuat Transkeu.ID.';
 export const PORTAL_RESMI = { nama: 'Portal APBN Kementerian Keuangan', url: 'https://www.kemenkeu.go.id/' };
@@ -116,6 +117,7 @@ export function jawab(pertanyaan, { fakta, kegunaan = [], topik, istilah = [] })
     angka,
     hitung,
     kegunaan: kegunaan.filter((k) => (k.topik === tp.id || (tp.id === 'pajak' && k.topik === 'umum')) && k.tahun_anggaran === tahun),
+    visual: visualOtomatis(angka, tp.id),
     batasan,
     lanjutan: (tp.contoh ?? []).filter((c) => normal(c) !== t),
   };

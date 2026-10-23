@@ -2,9 +2,12 @@ import { fakta, kegunaan } from '../data/fakta.js';
 import { topik, contohAwal } from '../data/topik.js';
 import { istilah } from '../data/istilah.js';
 import { kuis } from '../data/kuis.js';
+import { jejakAnggaran } from '../data/jejak.js';
+import { kanalResmi, susunDrafAspirasi } from '../data/aspirasi.js';
 import { jawab, PESAN_TIDAK_TERSEDIA } from './mesin.js';
 import { formatNilai, persenRealisasi } from './hitung.js';
 import { ikon } from './ikon.js';
+import { renderVisual } from './visual.js';
 
 const data = { fakta, kegunaan, topik, istilah };
 const $ = (id) => document.getElementById(id);
@@ -161,7 +164,7 @@ function kepalaJawaban(hasil) {
     el('strong', {}, 'Transkeu'),
     hasil.ai
       ? el('span', { class: 'mode', title: 'AI menjelaskan; semua angka diisi program dari tabel fakta' }, 'AI · angka dari tabel fakta')
-      : el('span', { class: 'mode dasar', title: 'AI sedang tidak aktif; jawaban disusun aturan sederhana' }, 'Mode dasar'));
+      : el('span', { class: 'mode dasar', title: hasil.catatan_mode || 'AI sedang tidak aktif; jawaban disusun aturan sistem' }, 'Mode dasar'));
 }
 
 function chipsLanjutan(daftar) {
@@ -190,6 +193,7 @@ function kartuJawaban(pertanyaan, hasil) {
   return el('article', { class: 'kartu jawaban' },
     kepalaJawaban(hasil),
     el('p', { class: 'ringkas' }, teksBeristilah(hasil.ringkas, sudah)),
+    hasil.visual && renderVisual(hasil.visual, { onBukaSumber: bukaSumber, el }),
     hasil.angka.length > 0 && el('div', {}, el('div', { class: 'judul-kecil' }, ikon('topik'), 'Angka utama'),
       el('ul', { class: 'daftar-angka' }, hasil.angka.map((b) => barisAngka(b, sudah)))),
     hasil.hitung && el('div', {},
@@ -380,12 +384,259 @@ $('isi-beranda').append(
     el('div', { class: 'grid-topik' }, topik.filter((t) => !t.tersembunyi).map(kartuTopik))),
   el('div', { class: 'bagian' },
     el('div', { class: 'kartu', style: 'display:grid;gap:12px' },
+      el('h3', { style: 'font-size:20px;font-weight:800' }, 'Fitur Partisipasi & Pengawasan'),
+      el('p', { class: 'catatan-kecil' }, 'Pantau aliran program dari pagu hingga output fisik di Jejak Anggaran, atau susun draf advokasi publik berbasis data resmi APBN.'),
+      el('div', { class: 'chips' },
+        el('button', { type: 'button', class: 'tombol tombol-utama', onclick: () => { pindahTab('jejak'); window.scrollTo(0, 0); } }, ikon('jejak'), 'Jejak Anggaran'),
+        el('button', { type: 'button', class: 'tombol', onclick: () => { pindahTab('aspirasi'); window.scrollTo(0, 0); } }, ikon('aspirasi'), 'Aspirasi Data')))),
+  el('div', { class: 'bagian' },
+    el('div', { class: 'kartu', style: 'display:grid;gap:12px' },
       el('h3', { style: 'font-size:20px;font-weight:800' }, 'Seberapa paham kamu soal APBN?'),
       el('p', { class: 'catatan-kecil' }, 'Kerjakan kuis lima soal sebelum dan sesudah memakai Transkeu.ID, lalu lihat perubahannya.'),
       el('div', { class: 'chips' },
         el('button', { type: 'button', class: 'tombol tombol-utama', onclick: () => { pindahTab('kuis'); window.scrollTo(0, 0); } }, ikon('kuis'), 'Mulai kuis'),
         el('button', { type: 'button', class: 'tombol', onclick: () => { pindahTab('kamus'); window.scrollTo(0, 0); } }, ikon('kamus'), 'Buka kamus')))),
 );
+
+/* ---------- Jejak Anggaran (Paper: Alokasi -> Realisasi -> Capaian) ---------- */
+function renderJejakStep(judul, dataStep, kelasBadge, statusCapaian = 'tersedia') {
+  if (!dataStep) return null;
+  const isCapaian = kelasBadge === 'capaian';
+  const isBelum = statusCapaian === 'belum_tersedia' || dataStep.status === 'belum_tersedia';
+
+  return el('div', { class: 'jejak-step-card' },
+    el('div', { class: 'step-header' },
+      el('span', { class: 'step-nomor' }, judul),
+      el('span', { class: `step-badge step-badge-${isBelum ? 'belum' : kelasBadge}` },
+        isBelum ? 'Belum Rilis' : (isCapaian ? 'Output Fisik' : (dataStep.satuan ?? ''))),
+    ),
+    el('div', { class: 'step-nilai' },
+      isCapaian
+        ? (isBelum ? 'Belum dipublikasikan' : dataStep.output_fisik)
+        : (dataStep.nilai != null ? formatNilai(dataStep) : 'Belum dirinci'),
+    ),
+    el('div', { class: 'step-label' }, dataStep.label),
+    dataStep.dokumen && dataStep.url
+      ? el('button', {
+          type: 'button',
+          class: 'step-tombol-sumber',
+          onclick: () => bukaSumber({
+            ...dataStep,
+            pos: dataStep.label,
+            jenis_angka: isCapaian ? 'Capaian Output' : (kelasBadge === 'alokasi' ? 'Anggaran' : 'Realisasi'),
+            tahun_anggaran: 2026,
+            diperiksa_oleh: ['Ridho Rambu Bassae', 'Nisaa'],
+            tanggal_periksa: '22 Oktober 2026',
+          }),
+        }, ikon('dokumen'), 'Lihat dokumen sumber')
+      : null,
+  );
+}
+
+function kartuJejak(item) {
+  const alokasi = item.tahap.alokasi;
+  const realisasi = item.tahap.realisasi;
+  const capaian = item.tahap.capaian;
+
+  return el('article', { class: 'jejak-kartu' },
+    el('div', { class: 'jejak-header' },
+      el('div', { class: 'jejak-judul-blok' },
+        el('span', { class: 'jejak-sektor-badge' }, item.sektor),
+        el('h3', {}, item.nama),
+        el('p', { class: 'jejak-deskripsi' }, item.deskripsi),
+      ),
+      el('button', {
+        type: 'button',
+        class: 'tombol-teks',
+        onclick: () => tanya(`Bagaimana alokasi dan realisasi ${item.nama.toLowerCase()}?`),
+      }, 'Tanya AI', ikon('panah')),
+    ),
+    el('div', { class: 'jejak-alur' },
+      renderJejakStep('1. Alokasi Pagu', alokasi, 'alokasi'),
+      renderJejakStep('2. Realisasi Belanja', realisasi, 'realisasi'),
+      renderJejakStep('3. Capaian Fisik', capaian, 'capaian', capaian.status),
+    ),
+    el('p', { class: 'jejak-catatan-kaki' },
+      ikon('info'),
+      el('strong', {}, ' Catatan Pengawasan: '),
+      item.catatan_pengawasan,
+    ),
+  );
+}
+
+let filterJejakAktif = 'semua';
+function tampilJejak(filter = 'semua') {
+  filterJejakAktif = filter;
+  const daftarFilter = [
+    { id: 'semua', nama: 'Semua Sektor' },
+    { id: 'pendidikan', nama: 'Pendidikan' },
+    { id: 'kesehatan', nama: 'Kesehatan' },
+    { id: 'perlinsos', nama: 'Perlindungan Sosial' },
+    { id: 'infrastruktur', nama: 'Infrastruktur' },
+    { id: 'subsidi_energi', nama: 'Subsidi Energi' },
+  ];
+
+  const filterBar = el('div', { class: 'jejak-filters' },
+    daftarFilter.map((f) => el('button', {
+      type: 'button',
+      class: 'jejak-filter-btn',
+      'aria-pressed': String(f.id === filterJejakAktif),
+      onclick: () => tampilJejak(f.id),
+    }, f.nama)),
+  );
+
+  const daftarItem = jejakAnggaran.filter((j) => filterJejakAktif === 'semua' || j.topik === filterJejakAktif);
+
+  const wadahKartu = el('div', { class: 'jejak-list' },
+    daftarItem.map(kartuJejak),
+  );
+
+  const disclaimerBox = el('div', { class: 'disclaimer-jejak' },
+    ikon('peringatan'),
+    el('strong', {}, ' Prinsip Akuntansi Sektor Publik: '),
+    'Realisasi belanja mencerminkan penyerapan kas negara, ',
+    el('strong', {}, 'bukan ukuran otomatis keberhasilan atau dampak program. '),
+    'Transkeu.ID menyandingkan pagu anggaran, realisasi berjalan, dan output fisik riil agar warga dapat mengawasi kemanfaatan setiap rupiah uang pajak.',
+  );
+
+  $('jejak-anggaran').replaceChildren(
+    kepalaBagian('Jejak Anggaran', 'Telusuri Dari Pagu Hingga Capaian Nyata', 'Menghubungkan tiga mata rantai: Berapa yang dianggarkan, berapa yang dibelanjakan, dan apa hasil fisik yang dinikmati masyarakat.', 'jejak'),
+    disclaimerBox,
+    filterBar,
+    wadahKartu,
+  );
+}
+tampilJejak();
+
+/* ---------- Aspirasi Berbasis Data (Paper: Warga Mengawasi APBN) ---------- */
+function tampilAspirasi() {
+  const topikList = [
+    'Pendidikan (Sekolah, Beasiswa, Fasilitas Belajar)',
+    'Kesehatan (BPJS PBI, Layanan RS, Skrining Kesehatan)',
+    'Perlindungan Sosial (PKH, Sembako, Bantuan Tunai)',
+    'Infrastruktur (Jalan Rusak, Irigasi, Jembatan, Transportasi)',
+    'Subsidi Energi (Ketersediaan Gas LPG 3kg, Listrik, BBM)',
+    'Penerimaan Pajak & Tata Kelola Keuangan Negara',
+    'Kebijakan APBN Umum & Anggaran Prioritas',
+  ];
+
+  const selectTopik = el('select', { id: 'asp-topik' },
+    topikList.map((t) => el('option', { value: t }, t)),
+  );
+
+  const inputLokasi = el('input', {
+    type: 'text',
+    id: 'asp-lokasi',
+    placeholder: 'Contoh: Kabupaten Lebak, Banten',
+    maxlength: '100',
+  });
+
+  const textMasalah = el('textarea', {
+    id: 'asp-masalah',
+    placeholder: 'Jelaskan kendala nyata di lapangan (misal: "Banyak siswa prasejahtera di desa kami belum menerima bantuan PIP padahal terdaftar di DTKS...")',
+    rows: '3',
+    maxlength: '600',
+    required: true,
+  });
+
+  const textData = el('textarea', {
+    id: 'asp-data',
+    placeholder: 'Sebutkan angka atau dokumen resmi dari Transkeu.ID (misal: "APBN 2026 mengalokasikan PIP Rp11,2 T untuk 16 juta siswa menurut Konpers APBN KiTa Oktober 2026")',
+    rows: '2',
+    maxlength: '400',
+  });
+
+  const textMasukan = el('textarea', {
+    id: 'asp-masukan',
+    placeholder: 'Apa usulan atau solusi konkret Anda? (misal: "Memohon dinas terkait mempercepat verifikasi data dan membuka posko pengaduan di sekolah...")',
+    rows: '3',
+    maxlength: '600',
+    required: true,
+  });
+
+  const wadahDraf = el('div', { class: 'draf-hasil-wadah', hidden: true });
+  const previewDraf = el('div', { class: 'draf-preview' });
+
+  const tombolSalin = el('button', {
+    type: 'button',
+    class: 'tombol tombol-utama',
+    onclick: async () => {
+      try {
+        await navigator.clipboard.writeText(previewDraf.textContent);
+        toast('Draf aspirasi berhasil disalin ke papan klip!');
+      } catch {
+        toast('Gagal menyalin otomatis. Silakan salin teks secara manual.');
+      }
+    },
+  }, ikon('salin'), 'Salin Draf Aspirasi');
+
+  const tombolTutupDraf = el('button', {
+    type: 'button',
+    class: 'tombol',
+    onclick: () => { wadahDraf.hidden = true; },
+  }, 'Tutup Draf');
+
+  wadahDraf.append(
+    el('div', { class: 'judul-kecil' }, ikon('dokumen'), 'Draf Surat Aspirasi Siap Kirim'),
+    previewDraf,
+    el('div', { class: 'draf-tombol-bar' }, tombolSalin, tombolTutupDraf),
+  );
+
+  const form = el('form', {
+    class: 'form-aspirasi kartu',
+    onsubmit: (e) => {
+      e.preventDefault();
+      if (!textMasalah.value.trim() || !textMasukan.value.trim()) {
+        return toast('Harap isi masalah dan masukan Anda.');
+      }
+      const draf = susunDrafAspirasi({
+        topik: selectTopik.value,
+        masalah: textMasalah.value,
+        dataPendukung: textData.value,
+        masukan: textMasukan.value,
+        lokasi: inputLokasi.value,
+      });
+      previewDraf.textContent = draf;
+      wadahDraf.hidden = false;
+      wadahDraf.scrollIntoView({ behavior: 'smooth' });
+      toast('Draf aspirasi berhasil disusun!');
+    },
+  },
+    el('div', { class: 'grup-input' }, el('label', { for: 'asp-topik' }, '1. Pilih Topik Pelayanan Publik'), selectTopik),
+    el('div', { class: 'grup-input' }, el('label', { for: 'asp-lokasi' }, '2. Wilayah / Lokasi (Opsional)'), inputLokasi),
+    el('div', { class: 'grup-input' }, el('label', { for: 'asp-masalah' }, '3. Masalah atau Kendala Nyata'), textMasalah),
+    el('div', { class: 'grup-input' }, el('label', { for: 'asp-data' }, '4. Data Rujukan APBN (Berdasarkan Temuan di Transkeu.ID)'), textData),
+    el('div', { class: 'grup-input' }, el('label', { for: 'asp-masukan' }, '5. Usulan / Rekomendasi Solusi Konstruktif'), textMasukan),
+    el('button', { type: 'submit', class: 'tombol tombol-utama' }, ikon('kirim'), 'Susun Draf Aspirasi Berbasis Data'),
+  );
+
+  const daftarKanal = el('div', { class: 'kanal-aspirasi-wadah' },
+    kepalaBagian('Kanal Resmi Pemerintah', 'Kirimkan Aspirasi Anda ke Lembaga Berwenang', 'Transkeu.ID tidak mengirim data aspirasi secara otomatis. Salin draf Anda dan sampaikan langsung melalui saluran pengaduan resmi nasional yang terverifikasi berikut:', 'keluar'),
+    el('div', { class: 'kanal-grid' },
+      kanalResmi.map((k) => el('a', {
+        href: k.url,
+        class: 'kanal-card',
+        target: '_blank',
+        rel: 'noopener noreferrer',
+      },
+        el('h4', {}, k.nama, ikon('keluar')),
+        el('p', { class: 'instansi' }, k.instansi),
+        el('p', { class: 'fungsi' }, k.kegunaan),
+      )),
+    ),
+  );
+
+  $('aspirasi-data').replaceChildren(
+    kepalaBagian('Aspirasi Berbasis Data', 'Ubah Suara Warga Jadi Masukan Berbobot', 'Gunakan data anggaran resmi untuk menyusun kritik dan masukan yang kredibel, santun, dan dapat dipertanggungjawabkan kepada instansi terkait.', 'aspirasi'),
+    el('div', { class: 'aspirasi-intro kartu' },
+      el('p', {}, 'Kritik publik sering kali diabaikan karena dianggap sekadar keluhan tanpa dasar. Transkeu.ID memfasilitasi Anda menghubungkan persoalan nyata di lapangan dengan angka alokasi resmi negara, sehingga masukan Anda memiliki bobot advokasi yang kuat.'),
+    ),
+    form,
+    wadahDraf,
+    daftarKanal,
+  );
+}
+tampilAspirasi();
 
 /* ---------- Kamus ---------- */
 function tampilKamus(filter = '') {
