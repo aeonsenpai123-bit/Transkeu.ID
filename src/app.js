@@ -264,7 +264,7 @@ async function tanya(pertanyaan) {
 function sapa() {
   const terakhir = simpan.baca('transkeu.riwayat', []);
   return el('div', { class: 'sapa', id: 'sapa' },
-    el('div', { class: 'avatar-besar', 'aria-hidden': 'true' }, ikon('kilau')),
+    el('img', { class: 'avatar-besar logo-avatar', src: 'assets/logo.jpg', alt: 'Logo Transkeu.ID' }),
     el('h2', {}, 'Halo, aku Transkeu'),
     el('p', {}, 'Aku membantu menjelaskan ke mana uang rakyat di APBN dipakai. Tanyakan dengan bahasa sehari-hari; setiap angka bisa kamu cek sumbernya.'),
     el('div', { class: 'saran' }, contohAwal.map((q) => el('button', { type: 'button', onclick: () => tanya(q) }, q))),
