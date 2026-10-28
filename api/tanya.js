@@ -1,31 +1,31 @@
-// Vercel Serverless Function untuk POST /api/tanya
-import { tanganiTanya } from '../src/api-handler.js';
+import { handleQuestion } from '../server/handler.js';
+
+export const config = { maxDuration: 45 };
 
 export default async function handler(req, res) {
-  // CORS & method guard
+  res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return res.status(200).end();
   }
-
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'metode_tidak_diizinkan' });
+    return res.status(405).json({ error: 'Gunakan POST.' });
   }
-
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1';
-
-  let badan = req.body;
-  if (typeof badan === 'string') {
-    try {
-      badan = JSON.parse(badan);
-    } catch {
-      return res.status(400).json({ error: 'format_json_tidak_sah' });
-    }
+  if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) {
+    return res.status(415).json({ error: 'Gunakan JSON.' });
   }
-
-  const { kode, isi } = await tanganiTanya({ badan, ip });
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  return res.status(kode).json(isi);
+  let body;
+  try {
+    body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  } catch {
+    return res.status(400).json({ error: 'JSON tidak valid.' });
+  }
+  if (Buffer.byteLength(JSON.stringify(body ?? {})) > 24000) {
+    return res.status(413).json({ error: 'Permintaan terlalu besar.' });
+  }
+  const ip = req.headers['x-real-ip'] ?? req.headers['x-forwarded-for']?.split(',')[0]?.trim() ?? req.socket?.remoteAddress ?? 'unknown';
+  const result = await handleQuestion(body, { ip });
+  return res.status(result.code).json(result.body);
 }

@@ -1,7 +1,7 @@
 // Visualisasi interaktif data APBN untuk obrolan Transkeu.ID
 // Semua visual digenerate dari baris fakta yang tervalidasi.
 // Dilarang mengarang angka, koordinat liar, atau membandingkan cakupan berbeda tanpa tanda.
-import { formatNilai, formatAngka } from './hitung.js';
+import { formatNilai, formatAngka, persenRealisasi } from './hitung.js';
 import { ikon } from './ikon.js';
 
 // Memvalidasi permintaan visual dari LLM atau mesin aturan
@@ -49,7 +49,7 @@ export function visualOtomatis(angka, topikId) {
         judul: 'Komposisi Belanja Negara 2026',
         tujuan: 'Pembagian belanja pemerintah pusat vs transfer ke daerah',
         satuan: 'Rp triliun',
-        periode: 'APBN TA 2026',
+        periode: 'TA 2026',
         cakupanBerbeda: false,
         items: angka,
       };
@@ -57,323 +57,447 @@ export function visualOtomatis(angka, topikId) {
 
     // Jika ada pasangan anggaran & realisasi
     if (anggaran && realisasi) {
+      const hitungAman = persenRealisasi(realisasi, anggaran);
+      const samaCakupan = Boolean(hitungAman);
       return {
         tipe: 'batang',
         judul: `Perbandingan Anggaran & Realisasi: ${anggaran.pos}`,
         tujuan: 'Melihat rencana anggaran vs realisasi yang sudah berjalan',
         satuan: anggaran.satuan,
-        periode: realisasi.posisi_data ?? `TA ${anggaran.tahun_anggaran}`,
-        cakupanBerbeda: anggaran.cakupan !== realisasi.cakupan,
+        periode: realisasi.posisi_data || `TA ${realisasi.tahun_anggaran}`,
+        cakupanBerbeda: !samaCakupan,
         items: [anggaran, realisasi],
       };
     }
 
-    // Jika banyak fungsi atau pos
+    // Jika lebih dari 2 titik realisasi pada pos yang sama -> grafik garis tren
+    const semuaRealisasi = angka.filter((a) => a.jenis_angka === 'Realisasi');
+    if (semuaRealisasi.length >= 2) {
+      return {
+        tipe: 'garis',
+        judul: `Tren Realisasi: ${semuaRealisasi[0].pos}`,
+        tujuan: 'Melihat perkembangan realisasi antar periode',
+        satuan: semuaRealisasi[0].satuan,
+        periode: 'Perbandingan periode',
+        cakupanBerbeda: false,
+        items: semuaRealisasi,
+      };
+    }
+
+    // Default 2 angka umum: grafik batang
     return {
       tipe: 'batang',
-      judul: 'Ringkasan Angka Terkait',
-      tujuan: 'Perbandingan pos-pos anggaran',
+      judul: 'Perbandingan Data Fiskal',
+      tujuan: 'Membandingkan data anggaran terkait',
       satuan: angka[0].satuan,
-      periode: `TA ${angka[0].tahun_anggaran}`,
-      cakupanBerbeda: cakupansGanda(angka),
-      items: angka,
-    };
-  }
-
-  // Kasus 2: Hanya satu angka
-  if (angka.length === 1) {
-    const item = angka[0];
-    return {
-      tipe: 'kartu_angka',
-      judul: item.pos,
-      tujuan: `${item.jenis_angka} ${item.posisi_data ?? `TA ${item.tahun_anggaran}`}`,
-      satuan: item.satuan,
-      periode: item.posisi_data ?? `TA ${item.tahun_anggaran}`,
+      periode: angka[0].posisi_data || `TA ${angka[0].tahun_anggaran}`,
       cakupanBerbeda: false,
-      items: [item],
+      items: angka.slice(0, 4),
     };
   }
 
-  return null;
+  // Kasus 2: Hanya 1 angka -> Kartu angka tunggal informatif
+  const tunggal = angka[0];
+  return {
+    tipe: 'kartu_angka',
+    judul: tunggal.pos,
+    tujuan: 'Informasi nilai dan status dokumen resmi',
+    satuan: tunggal.satuan,
+    periode: tunggal.posisi_data || `TA ${tunggal.tahun_anggaran}`,
+    cakupanBerbeda: false,
+    items: [tunggal],
+  };
 }
 
-function cakupansGanda(daftar) {
-  return new Set(daftar.map((d) => d.cakupan)).size > 1;
-}
+// Render komponen visual interaktif utama
+export function renderVisual(visual, { onBukaSumber, el } = {}) {
+  if (!visual || !visual.items || !visual.items.length) return null;
 
-// Render visual interaktif ke elemen DOM
-export function renderVisual(visual, { onBukaSumber, el }) {
-  if (!visual || !visual.items?.length) return null;
+  const wadah = el('div', { class: 'visual-wadah', 'data-tipe': visual.tipe });
+  // Jalur Mode Dasar juga tidak boleh menggambar pasangan data yang tidak setara.
+  const same = key => new Set(visual.items.map(f => f[key])).size === 1;
+  const mixedKinds = !same('jenis_angka');
+  const comparablePair = visual.items.length === 2 && Boolean(persenRealisasi(visual.items.find(f => f.jenis_angka === 'Realisasi'), visual.items.find(f => f.jenis_angka === 'Anggaran')));
+  const allowedGroup = visual.items.every(f => f.kelompok) && same('kelompok') && same('jenis_angka');
+  const sameSeries = same('cakupan') && same('jenis_angka') && new Set(visual.items.map(f => f.posisi_data ?? String(f.tahun_anggaran))).size === visual.items.length;
+  const unsafe = !same('satuan') || (mixedKinds && !comparablePair) || (visual.tipe !== 'garis' && !same('tahun_anggaran') && !allowedGroup) || (visual.tipe === 'garis' && !sameSeries);
+  if (unsafe) {
+    wadah.append(el('h4', {}, 'Data tersedia, tetapi belum sebanding'), el('p', {}, 'Cakupan, satuan, atau periode berbeda sehingga grafik tidak digambar langsung.'));
+    renderTabelData(wadah, visual, { onBukaSumber, el });
+    return wadah;
+  }
 
-  const wadah = el('div', { class: 'kartu-visual' });
-  let modeTabel = false;
+  // Kepala visual: judul, tujuan, dan tombol toggle tabel
+  const kepala = el('div', { class: 'visual-kepala' });
+  const infoJudul = el('div', { class: 'visual-info-judul' });
+  infoJudul.append(
+    el('h4', { class: 'visual-judul' }, visual.judul),
+    el('p', { class: 'visual-tujuan' }, visual.tujuan)
+  );
 
-  // Header visual
-  const tombolToggle = el('button', {
-    type: 'button',
-    class: 'tombol-visual-tab',
-    title: 'Ganti tampilan grafik / tabel data',
-    onclick: () => {
-      modeTabel = !modeTabel;
-      badanGrafik.hidden = modeTabel;
-      badanTabel.hidden = !modeTabel;
-      tombolToggle.textContent = modeTabel ? 'Tampilkan grafik' : 'Tampilkan tabel data';
+  const tombolTabel = el(
+    'button',
+    {
+      type: 'button',
+      class: 'tombol-visual-tab',
+      'aria-expanded': 'false',
+      title: 'Tampilkan format tabel data yang aksesibel',
+      onclick: () => toggleTabelData(wadah, tombolTabel),
     },
-  }, 'Tampilkan tabel data');
-
-  const kepala = el('div', { class: 'visual-kepala' },
-    el('div', { class: 'visual-judul-blok' },
-      el('span', { class: 'lencana-visual' }, ikon('topik'), visual.tipe.toUpperCase()),
-      el('h4', { class: 'visual-judul' }, visual.judul),
-      el('p', { class: 'visual-tujuan' }, visual.tujuan),
-    ),
-    tombolToggle,
+    ikon('tabel'),
+    el('span', {}, 'Tabel data')
   );
 
-  const metaBar = el('div', { class: 'visual-meta' },
-    el('span', { class: 'visual-pill' }, ikon('gedung'), visual.periode),
-    el('span', { class: 'visual-pill' }, ikon('koin'), visual.satuan),
-    visual.cakupanBerbeda ? el('span', { class: 'visual-pill peringatan-pill' }, ikon('peringatan'), 'Cakupan berbeda') : null,
-  );
+  kepala.append(infoJudul, tombolTabel);
+  wadah.append(kepala);
 
-  // Badan Grafik
+  // Badge periode dan satuan
+  const metaBar = el('div', { class: 'visual-meta-bar' });
+  metaBar.append(
+    el('span', { class: 'visual-badge' }, ikon('kalender'), el('span', {}, visual.periode)),
+    el('span', { class: 'visual-badge' }, ikon('dompet'), el('span', {}, `Satuan: ${visual.satuan}`))
+  );
+  if (visual.cakupanBerbeda) {
+    metaBar.append(
+      el(
+        'span',
+        { class: 'visual-badge badge-peringatan', title: 'Perhatian: pos yang dibandingkan memiliki cakupan yang berbeda.' },
+        ikon('peringatan'),
+        el('span', {}, 'Cakupan berbeda')
+      )
+    );
+  }
+  wadah.append(metaBar);
+
+  // Badan grafik berdasarkan tipe
   const badanGrafik = el('div', { class: 'visual-badan-grafik' });
-  renderTipeGrafik(badanGrafik, visual, { onBukaSumber, el });
+  switch (visual.tipe) {
+    case 'batang':
+      renderGrafikBatang(badanGrafik, visual, { onBukaSumber, el });
+      break;
+    case 'komposisi':
+      renderGrafikKomposisi(badanGrafik, visual, { onBukaSumber, el });
+      break;
+    case 'garis':
+      renderGrafikGaris(badanGrafik, visual, { onBukaSumber, el });
+      break;
+    case 'kartu_angka':
+      renderKartuAngka(badanGrafik, visual, { onBukaSumber, el });
+      break;
+    default:
+      renderGrafikBatang(badanGrafik, visual, { onBukaSumber, el });
+  }
+  wadah.append(badanGrafik);
 
-  // Badan Tabel Data (Aksesibilitas & audit data)
-  const badanTabel = el('div', { class: 'visual-badan-tabel', hidden: true });
-  renderTabelData(badanTabel, visual, { onBukaSumber, el });
+  // Badan tabel data (default: hidden)
+  renderTabelData(wadah, visual, { onBukaSumber, el });
 
-  wadah.append(kepala, metaBar, badanGrafik, badanTabel);
   return wadah;
 }
 
-function renderTipeGrafik(wadah, visual, { onBukaSumber, el }) {
-  const { tipe, items, cakupanBerbeda } = visual;
-
-  if (tipe === 'batang') {
-    renderGrafikBatang(wadah, items, cakupanBerbeda, { onBukaSumber, el });
-  } else if (tipe === 'komposisi') {
-    renderGrafikKomposisi(wadah, items, { onBukaSumber, el });
-  } else if (tipe === 'garis') {
-    renderGrafikGaris(wadah, items, { onBukaSumber, el });
-  } else {
-    renderKartuAngka(wadah, items[0], { onBukaSumber, el });
-  }
-}
-
-// Grafik Batang Interaktif
-function renderGrafikBatang(wadah, items, cakupanBerbeda, { onBukaSumber, el }) {
-  const maxNilai = Math.max(...items.map((i) => i.nilai), 1);
+// 1. Grafik Batang (Perbandingan Kategori / Anggaran vs Realisasi)
+function renderGrafikBatang(badan, visual, { onBukaSumber, el }) {
+  const maxNilai = Math.max(...visual.items.map((i) => i.nilai), 1);
   const daftar = el('div', { class: 'grafik-batang-list' });
 
-  // Cari apakah ada pasangan Anggaran & Realisasi bercakupan sama
-  const anggaran = items.find((i) => i.jenis_angka === 'Anggaran');
-  const realisasi = items.find((i) => i.jenis_angka === 'Realisasi');
-  const samaCakupan = anggaran && realisasi && anggaran.cakupan === realisasi.cakupan;
+  for (const item of visual.items) {
+    const persenTinggi = Math.min(100, Math.max(8, (item.nilai / maxNilai) * 100));
+    const isRealisasi = item.jenis_angka === 'Realisasi';
 
-  for (const item of items) {
-    const persenPenuh = Math.min(Math.round((item.nilai / maxNilai) * 100), 100);
-    const kelasWarna = `bar-warna-${item.jenis_angka.toLowerCase()}`;
+    const baris = el('div', { class: `baris-batang ${isRealisasi ? 'batang-realisasi' : 'batang-anggaran'}` });
+    const labelWadah = el('div', { class: 'batang-label-wadah' });
 
-    // Label realisasi: 'tercapai' untuk pajak, 'terpakai' untuk belanja
-    let labelPersen = '';
-    if (samaCakupan && item.jenis_angka === 'Realisasi') {
-      const p = ((realisasi.nilai / anggaran.nilai) * 100).toFixed(1).replace('.', ',');
-      const kataLabel = item.cakupan === 'pajak' || item.pos.toLowerCase().includes('penerimaan') ? 'tercapai' : 'terpakai';
-      labelPersen = `${p}% ${kataLabel}`;
+    // Label: Jangan pakai kata "terpakai" untuk penerimaan; pakai "terealisasi" atau "tercapai"
+    let statusLabel = item.jenis_angka;
+    if (item.topik === 'pajak' && isRealisasi) {
+      statusLabel = 'Tercapai';
     }
 
-    const barItem = el('div', { class: 'bar-row' },
-      el('div', { class: 'bar-info' },
-        el('div', { class: 'bar-label-group' },
-          el('span', { class: `bar-tag tag-${item.jenis_angka.toLowerCase()}` }, item.jenis_angka),
-          el('span', { class: 'bar-pos-nama' }, item.pos),
-          item.posisi_data ? el('span', { class: 'bar-posisi' }, item.posisi_data) : null,
-        ),
-        el('button', {
-          type: 'button',
-          class: 'bar-nilai-btn',
-          title: 'Klik untuk melihat dokumen sumber',
-          onclick: () => onBukaSumber(item),
-        },
-          el('strong', {}, formatNilai(item)),
-          el('span', { class: 'bar-sumber-ikon' }, ikon('dokumen')),
-        ),
-      ),
-      el('div', { class: 'bar-track' },
-        el('div', {
-          class: `bar-fill ${kelasWarna}`,
-          style: `width: ${persenPenuh}%`,
-          role: 'progressbar',
-          'aria-valuenow': item.nilai,
-          'aria-valuemin': 0,
-          'aria-valuemax': maxNilai,
-          'aria-label': `${item.pos}: ${formatNilai(item)}`,
-        }),
-      ),
-      labelPersen ? el('div', { class: 'bar-persen-keterangan' }, labelPersen) : null,
+    labelWadah.append(
+      el('span', { class: 'batang-nama' }, `${item.pos} (${statusLabel})`),
+      el('span', { class: 'batang-nilai' }, formatNilai(item))
     );
-    daftar.append(barItem);
+
+    const rel = el('div', { class: 'batang-rel' });
+    const bar = el('div', {
+      class: 'batang-isi',
+      style: `width: ${persenTinggi}%`,
+      title: `${item.pos}: ${formatNilai(item)} (${item.dokumen})`,
+    });
+    rel.append(bar);
+
+    const aksi = el('div', { class: 'batang-aksi' });
+    const tombolSumber = el(
+      'button',
+      {
+        type: 'button',
+        class: 'tombol-sumber-mini',
+        title: `Cek sumber resmi: ${item.dokumen}`,
+        onclick: () => onBukaSumber && onBukaSumber(item),
+      },
+      ikon('tautan'),
+      el('span', {}, 'Sumber')
+    );
+    aksi.append(tombolSumber);
+
+    baris.append(labelWadah, rel, aksi);
+    daftar.append(baris);
   }
 
-  if (cakupanBerbeda) {
-    daftar.append(el('p', { class: 'catatan-cakupan-beda' },
-      ikon('info'),
-      'Perhatian: Cakupan pos di atas berbeda. Angka tidak dapat langsung diperbandingkan sebagai persentase penyerapan.',
-    ));
+  // Jika membandingkan tepat 1 Anggaran dan 1 Realisasi dengan cakupan sama, tampilkan rasio capaian
+  const anggaran = visual.items.find((i) => i.jenis_angka === 'Anggaran');
+  const realisasi = visual.items.find((i) => i.jenis_angka === 'Realisasi');
+  const hitungAman = persenRealisasi(realisasi, anggaran);
+  const samaCakupan = Boolean(hitungAman);
+
+  if (anggaran && realisasi && samaCakupan) {
+    const p = formatAngka(hitungAman.hasil, 1);
+    const teksStatus = anggaran.topik === 'pajak' ? 'Tercapai' : 'Terealisasi';
+    const rasioCard = el(
+      'div',
+      { class: 'rasio-capaian-card' },
+      el('span', { class: 'rasio-label' }, `${teksStatus}:`),
+      el('strong', { class: 'rasio-persen' }, `${p}%`),
+      el('span', { class: 'rasio-ket' }, `dari anggaran TA ${anggaran.tahun_anggaran}`)
+    );
+    badan.append(daftar, rasioCard);
+    return;
   }
 
-  wadah.append(daftar);
+  badan.append(daftar);
 }
 
-// Grafik Komposisi (Proporsi Total)
-function renderGrafikKomposisi(wadah, items, { onBukaSumber, el }) {
-  const total = items.reduce((sum, i) => sum + i.nilai, 0) || 1;
-  const barSegmented = el('div', { class: 'komposisi-bar' });
-  const legenda = el('div', { class: 'komposisi-legenda' });
+// 2. Grafik Komposisi (Kategori yang membentuk satu total)
+function renderGrafikKomposisi(badan, visual, { onBukaSumber, el }) {
+  const total = visual.items.reduce((s, i) => s + (Number(i.nilai) || 0), 0) || 1;
+  const wadahKomposisi = el('div', { class: 'komposisi-wadah' });
 
-  const palet = ['#1d4ed8', '#7dd3fc', '#10b981', '#f59e0b', '#8b5cf6'];
+  // Progress bar bersegmen
+  const barBertumpuk = el('div', { class: 'komposisi-bar' });
+  const palet = ['#2563eb', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6'];
 
-  items.forEach((item, idx) => {
-    const proporsi = (item.nilai / total) * 100;
-    const warna = palet[idx % palet.length];
-
-    // Segmen batang
+  visual.items.forEach((item, idx) => {
+    const persen = ((item.nilai / total) * 100).toFixed(1);
     const segmen = el('div', {
       class: 'komposisi-segmen',
-      style: `width: ${proporsi}%; background: ${warna}`,
-      title: `${item.pos}: ${formatNilai(item)} (${formatAngka(proporsi, 1)}%)`,
+      style: `width: ${persen}%; background: ${palet[idx % palet.length]}`,
+      title: `${item.pos}: ${formatNilai(item)} (${persen}%)`,
     });
-    barSegmented.append(segmen);
+    barBertumpuk.append(segmen);
+  });
+  wadahKomposisi.append(barBertumpuk);
 
-    // Legenda interaktif
-    const itemLegenda = el('button', {
-      type: 'button',
-      class: 'legenda-item-btn',
-      onclick: () => onBukaSumber(item),
-    },
-      el('span', { class: 'legenda-dot', style: `background: ${warna}` }),
+  // Legenda interaktif di bawah bar
+  const legendaGrid = el('div', { class: 'komposisi-legenda' });
+  visual.items.forEach((item, idx) => {
+    const persen = ((item.nilai / total) * 100).toFixed(1);
+    const itemLegenda = el('div', { class: 'legenda-item' });
+    const titikWarna = el('span', { class: 'legenda-warna', style: `background: ${palet[idx % palet.length]}` });
+    const teksLegenda = el('div', { class: 'legenda-teks' });
+    teksLegenda.append(
       el('span', { class: 'legenda-nama' }, item.pos),
-      el('strong', { class: 'legenda-nilai' }, `${formatNilai(item)} (${formatAngka(proporsi, 1)}%)`),
-      el('span', { class: 'ikon-link-sumber' }, ikon('dokumen')),
+      el('span', { class: 'legenda-nilai' }, `${formatNilai(item)} (${persen}%)`)
     );
-    legenda.append(itemLegenda);
+
+    const btn = el(
+      'button',
+      {
+        type: 'button',
+        class: 'legenda-sumber-btn',
+        title: 'Buka sumber data',
+        onclick: () => onBukaSumber && onBukaSumber(item),
+      },
+      ikon('tautan')
+    );
+
+    itemLegenda.append(titikWarna, teksLegenda, btn);
+    legendaGrid.append(itemLegenda);
   });
 
-  wadah.append(barSegmented, legenda);
+  wadahKomposisi.append(legendaGrid);
+  badan.append(wadahKomposisi);
 }
 
-// Grafik Garis (Tren Periode Berjalan)
-function renderGrafikGaris(wadah, items, { onBukaSumber, el }) {
-  if (items.length < 2) {
-    return renderGrafikBatang(wadah, items, false, { onBukaSumber, el });
-  }
+// 3. Grafik Garis (Tren Periode Berurutan yang Sebanding)
+function renderGrafikGaris(badan, visual, { onBukaSumber, el }) {
+  const wadahGaris = el('div', { class: 'garis-wadah' });
+  const items = [...visual.items].sort((a, b) => (a.tanggal_posisi || '').localeCompare(b.tanggal_posisi || ''));
+  const maxNilai = Math.max(...items.map((i) => i.nilai), 1);
+  const minNilai = Math.min(...items.map((i) => i.nilai), 0);
+  const rentang = maxNilai - minNilai || 1;
 
-  const maxVal = Math.max(...items.map((i) => i.nilai), 1);
-  const minVal = Math.min(...items.map((i) => i.nilai), 0);
-  const range = maxVal - minVal || 1;
+  // Render visualisasi garis sederhana berbasis SVG
+  const lebar = 360;
+  const tinggi = 140;
+  const padding = 28;
+  const jarak = (lebar - padding * 2) / Math.max(items.length - 1, 1);
 
-  // Bangun SVG garis responsif
-  const w = 400;
-  const h = 180;
-  const paddingX = 40;
-  const paddingY = 30;
-  const chartW = w - paddingX * 2;
-  const chartH = h - paddingY * 2;
-
-  const points = items.map((item, idx) => {
-    const x = paddingX + (idx / (items.length - 1)) * chartW;
-    const y = h - paddingY - ((item.nilai - minVal) / range) * chartH;
+  const titik = items.map((item, idx) => {
+    const x = padding + idx * jarak;
+    const y = tinggi - padding - ((item.nilai - minNilai) / rentang) * (tinggi - padding * 2);
     return { x, y, item };
   });
 
-  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const jalurD = titik.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
 
+  // Bangun SVG
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  svg.setAttribute('class', 'grafik-svg-garis');
+  svg.setAttribute('viewBox', `0 0 ${lebar} ${tinggi}`);
+  svg.setAttribute('class', 'garis-svg');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', `Grafik tren ${visual.judul}`);
 
-  // Garis path
+  // Path garis
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', pathD);
+  path.setAttribute('d', jalurD);
   path.setAttribute('fill', 'none');
   path.setAttribute('stroke', '#2563eb');
   path.setAttribute('stroke-width', '3');
   path.setAttribute('stroke-linecap', 'round');
-  svg.append(path);
+  svg.appendChild(path);
 
-  // Titik koordinat + label
-  const containerTitik = el('div', { class: 'garis-titik-list' });
-
-  points.forEach((p) => {
+  // Titik lingkaran dan label
+  titik.forEach(({ x, y, item }) => {
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', p.x);
-    circle.setAttribute('cy', p.y);
+    circle.setAttribute('cx', x);
+    circle.setAttribute('cy', y);
     circle.setAttribute('r', '5');
     circle.setAttribute('fill', '#ffffff');
-    circle.setAttribute('stroke', '#1d4ed8');
+    circle.setAttribute('stroke', '#2563eb');
     circle.setAttribute('stroke-width', '2.5');
-    svg.append(circle);
+    svg.appendChild(circle);
 
-    const btn = el('button', {
-      type: 'button',
-      class: 'titik-data-btn',
-      onclick: () => onBukaSumber(p.item),
-    },
-      el('span', { class: 'titik-periode' }, p.item.posisi_data ?? `TA ${p.item.tahun_anggaran}`),
-      el('strong', {}, formatNilai(p.item)),
-    );
-    containerTitik.append(btn);
+    const teks = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    teks.setAttribute('x', x);
+    teks.setAttribute('y', y - 8);
+    teks.setAttribute('text-anchor', 'middle');
+    teks.setAttribute('class', 'garis-nilai-svg');
+    teks.textContent = formatNilai(item);
+    svg.appendChild(teks);
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', x);
+    label.setAttribute('y', tinggi - 6);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('class', 'garis-periode-svg');
+    label.textContent = (item.posisi_data || '').replace('s.d. ', '');
+    svg.appendChild(label);
   });
 
-  wadah.append(svg, containerTitik);
+  wadahGaris.append(svg);
+
+  // Daftar poin interaktif di bawahnya
+  const poinList = el('div', { class: 'garis-poin-list' });
+  items.forEach((item) => {
+    const btn = el(
+      'button',
+      {
+        type: 'button',
+        class: 'chip-poin-garis',
+        onclick: () => onBukaSumber && onBukaSumber(item),
+      },
+      el('span', {}, `${item.posisi_data || item.tahun_anggaran}: `),
+      el('strong', {}, formatNilai(item)),
+      ikon('tautan')
+    );
+    poinList.append(btn);
+  });
+  wadahGaris.append(poinList);
+
+  badan.append(wadahGaris);
 }
 
-// Kartu Angka Tunggal
-function renderKartuAngka(wadah, item, { onBukaSumber, el }) {
-  const kartu = el('div', { class: 'visual-kartu-angka' },
-    el('span', { class: `bar-tag tag-${item.jenis_angka.toLowerCase()}` }, item.jenis_angka),
-    el('div', { class: 'kartu-angka-nilai' }, formatNilai(item)),
-    el('p', { class: 'kartu-angka-pos' }, `${item.pos} (${item.posisi_data ?? `TA ${item.tahun_anggaran}`})`),
-    el('button', {
-      type: 'button',
-      class: 'tombol tombol-sm tombol-lihat-dokumen',
-      onclick: () => onBukaSumber(item),
-    }, ikon('dokumen'), 'Periksa dokumen sumber'),
+// 4. Kartu Angka Tunggal (Untuk Jawaban 1 Fakta Utama)
+function renderKartuAngka(badan, visual, { onBukaSumber, el }) {
+  const item = visual.items[0];
+  const kartu = el('div', { class: 'kartu-angka-tunggal' });
+
+  const labelWadah = el('div', { class: 'angka-label-wadah' });
+  labelWadah.append(
+    el('span', { class: 'angka-pos' }, item.pos),
+    el('span', { class: 'angka-jenis-tag' }, item.jenis_angka)
   );
-  wadah.append(kartu);
+
+  const nilaiBesar = el('div', { class: 'angka-nilai-besar' }, formatNilai(item));
+
+  const infoBawah = el('div', { class: 'angka-info-bawah' });
+  infoBawah.append(
+    el('span', { class: 'angka-periode' }, ikon('kalender'), el('span', {}, item.posisi_data || `TA ${item.tahun_anggaran}`)),
+    el(
+      'button',
+      {
+        type: 'button',
+        class: 'tombol-sumber-kartu',
+        onclick: () => onBukaSumber && onBukaSumber(item),
+      },
+      ikon('tautan'),
+      el('span', {}, 'Lihat Dokumen Resmi')
+    )
+  );
+
+  kartu.append(labelWadah, nilaiBesar, infoBawah);
+  badan.append(kartu);
 }
 
-// Tabel Data untuk Aksesibilitas
+// 5. Tabel Data Aksesibel (Alternatif Grafik)
 function renderTabelData(wadah, visual, { onBukaSumber, el }) {
-  const tabel = el('table', { class: 'tabel-data-visual' },
-    el('thead', {},
-      el('tr', {},
-        el('th', {}, 'Pos Data'),
-        el('th', {}, 'Jenis'),
-        el('th', {}, 'Periode'),
-        el('th', {}, `Nilai (${visual.satuan})`),
-        el('th', {}, 'Sumber Resmi'),
-      ),
-    ),
-    el('tbody', {},
-      visual.items.map((item) =>
-        el('tr', {},
-          el('td', { class: 'td-pos' }, item.pos),
-          el('td', {}, el('span', { class: `bar-tag tag-${item.jenis_angka.toLowerCase()}` }, item.jenis_angka)),
-          el('td', {}, item.posisi_data ?? `TA ${item.tahun_anggaran}`),
-          el('td', { class: 'td-nilai' }, formatNilai(item)),
-          el('td', {},
-            el('button', {
-              type: 'button',
-              class: 'tombol-teks-tabel',
-              onclick: () => onBukaSumber(item),
-            }, item.dokumen.slice(0, 32) + '…', ikon('panah')),
-          ),
-        ),
-      ),
-    ),
+  const tabelWadah = el('div', { class: 'visual-badan-tabel', hidden: true });
+  const tabel = el('table', { class: 'tabel-visual' });
+
+  const thead = el('thead');
+  thead.append(
+    el(
+      'tr',
+      {},
+      el('th', { scope: 'col' }, 'Pos Anggaran'),
+      el('th', { scope: 'col' }, 'Jenis'),
+      el('th', { scope: 'col' }, 'Periode'),
+      el('th', { scope: 'col' }, 'Nilai'),
+      el('th', { scope: 'col' }, 'Sumber')
+    )
   );
-  wadah.append(tabel);
+
+  const tbody = el('tbody');
+  for (const item of visual.items) {
+    const tr = el('tr');
+    tr.append(
+      el('td', {}, item.pos),
+      el('td', {}, item.jenis_angka),
+      el('td', {}, item.posisi_data || `TA ${item.tahun_anggaran}`),
+      el('td', { class: 'tabel-kolom-angka' }, formatNilai(item)),
+      el(
+        'td',
+        {},
+        el(
+          'button',
+          {
+            type: 'button',
+            class: 'tombol-tabel-sumber',
+            title: `Buka ${item.dokumen}`,
+            onclick: () => onBukaSumber && onBukaSumber(item),
+          },
+          'Lihat PDF'
+        )
+      )
+    );
+    tbody.append(tr);
+  }
+
+  tabel.append(thead, tbody);
+  tabelWadah.append(tabel);
+  wadah.append(tabelWadah);
+}
+
+// Helper toggle tampilan grafik vs tabel data
+function toggleTabelData(wadah, tombol) {
+  const badanGrafik = wadah.querySelector('.visual-badan-grafik');
+  const badanTabel = wadah.querySelector('.visual-badan-tabel');
+  const teksTombol = tombol.querySelector('span');
+
+  const sedangBukaTabel = !badanTabel.hidden;
+  badanTabel.hidden = sedangBukaTabel;
+  badanGrafik.hidden = !sedangBukaTabel;
+
+  tombol.setAttribute('aria-expanded', String(!sedangBukaTabel));
+  teksTombol.textContent = sedangBukaTabel ? 'Tabel data' : 'Tampilkan grafik';
 }

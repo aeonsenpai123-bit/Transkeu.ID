@@ -20,37 +20,44 @@ Butuh Node.js 22 atau lebih baru. Tanpa langkah build rumit.
 
 ```powershell
 npm install
-copy .env.example .env   # lalu isi GEMINI_API_KEY di .env (opsional)
+copy .env.example .env   # lalu isi GEMINI_API_KEY atau ANTHROPIC_API_KEY di .env
 npm start                # buka http://localhost:5173
-npm test                 # menjalankan 42 tes unit otomatis
+npm test                 # menjalankan 99 tes unit otomatis
+npm run audit:data       # audit metadata korpus fakta
 ```
 
 ## Konfigurasi Deployment Vercel
 
-Situs dipublikasikan di Vercel dengan arsitektur serverless:
-- **Frontend:** Berkas statis (`index.html`, `src/styles.css`, `src/app.js`).
-- **Backend:** Vercel Serverless Function di `api/tanya.js` (didukung `src/api-handler.js` dan `@google/genai`).
-- **Routing:** Dikonfigurasi melalui `vercel.json`.
+Situs dipublikasikan di Vercel dengan arsitektur serverless modern:
+- **Frontend:** Berkas statis (`index.html`, `src/styles.css`, `src/app.js`) dengan logo resmi, per-paragraph citations, visual interaktif, Jejak Anggaran, dan Aspirasi Data.
+- **Backend:** Vercel Serverless Function di `api/tanya.js` dan `api/health.js` didukung mesin retrieval leksikal, grounding validator, dan self-repair loop di folder `server/`.
+- **Routing & Keamanan:** Dikonfigurasi melalui `vercel.json` (`maxDuration: 45`, no-store cache, nosniff, anti-clickjacking).
 
 ### Pengaturan Environment Variable di Vercel
 
-Agar Tanya AI aktif di Vercel dengan LLM Google Gemini:
+Agar Tanya AI aktif di Vercel:
 
 1. Buka dashboard proyek Anda di [vercel.com](https://vercel.com).
 2. Pilih proyek **transkeu-id** -> Masuk ke tab **Settings** -> **Environment Variables**.
 3. Tambahkan variabel berikut:
    - `GEMINI_API_KEY`: Kunci API Google Gemini (dapat dibuat gratis di [Google AI Studio](https://aistudio.google.com/)).
-   - `GEMINI_MODEL` *(Opsional)*: Nama model, misalnya `gemini-2.5-flash` (bawaan) atau `gemini-1.5-flash`.
+   - `GEMINI_MODEL` *(Opsional)*: `gemini-2.5-flash` (bawaan) atau `gemini-1.5-flash`.
+   - Atau `ANTHROPIC_API_KEY`: Kunci API Claude dari Anthropic Console.
    - `BATAS_TANYA_HARIAN` *(Opsional)*: Batas pertanyaan AI per IP per hari (bawaan: `50`).
+   - `UPSTASH_REDIS_REST_URL` & `UPSTASH_REDIS_REST_TOKEN` *(Opsional)*: Rate limiting terpusat lintas instance serverless Vercel.
 4. Lakukan **Redeploy** (atau *git push*) agar variabel lingkungan mulai berlaku.
-5. Jika variabel belum diisi, sistem secara otomatis dan aman menggunakan **Mode Dasar** (jawaban berbasis aturan tabel fakta).
+5. Cek endpoint `https://transkeu-id.vercel.app/api/health` untuk memastikan konfigurasi terdeteksi dengan status `configured: true`.
 
 | Path | Isi |
 | --- | --- |
-| `index.html`, `src/styles.css`, `src/app.js` | Tampilan aplikasi (F1 sampai F6, Jejak Anggaran, Aspirasi Data) |
-| `src/visual.js` | Validasi dan rendering visual interaktif (batang, komposisi, garis, kartu angka) |
-| `src/api-handler.js` | Handler backend terpadu untuk POST `/api/tanya` (Vercel & lokal) |
-| `api/tanya.js` | Vercel Serverless Function endpoint |
+| `index.html`, `src/styles.css`, `src/app.js` | Tampilan aplikasi (F1-F6, Jejak Anggaran, Aspirasi Data, per-paragraph citations) |
+| `src/visual.js` | Validasi dan rendering visual interaktif (batang, komposisi, garis, kartu angka, tabel data aksesibel) |
+| `server/retrieval.js` | Retrieval leksikal eviden APBN, perluasan sinonim sehari-hari, dan konteks pertanyaan lanjutan |
+| `server/prompt.js` | Instruksi sistem pemandu literasi fiskal dan JSON Schema terstruktur |
+| `server/grounding.js` | Validator grounding: pencegahan halusinasi angka, kalkulasi persen, dan validasi visual |
+| `server/llm.js` | Integrasi LLM (Google Gemini & Anthropic Claude) dengan self-repair loop |
+| `server/handler.js` | Handler pertanyaan, rate limiting terdistribusi, dan fallback Mode Dasar transparan |
+| `api/tanya.js`, `api/health.js` | Vercel Serverless Function endpoints |
 | `src/ai.js` | Integrasi Google Gemini (`@google/genai`) dengan persona pemandu literasi fiskal |
 | `src/penjaga.js` | Penjaga keamanan AI: memvalidasi teks dan mengisi placeholder dari tabel fakta |
 | `src/mesin.js` | Mesin aturan deterministik cadangan (Mode Dasar) |

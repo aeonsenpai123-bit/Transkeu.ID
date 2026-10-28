@@ -528,3 +528,11 @@ blockquote.kutipan { margin: 8px 0 16px; padding: 12px 14px; background: var(--b
 .kanal-card .instansi { font-size: 12px; font-weight: 700; color: var(--redup); margin: 0; }
 .kanal-card .fungsi { font-size: 13px; color: var(--tinta-2); margin: 0; }
 
+
+/* Narasi LLM: rujukan dekat klaim dan nyaman dibaca di ponsel. */
+.narasi-ai { display: grid; gap: 18px; }
+.paragraf-ai .ringkas { margin-bottom: 8px; line-height: 1.75; }
+.rujukan-paragraf { display: flex; flex-wrap: wrap; gap: 6px; }
+.sumber-paragraf { font-size: .8rem; text-align: left; white-space: normal; max-width: 100%; min-height: 44px; }
+.jawaban-kepala { flex-wrap: wrap; }
+.jawaban-kepala > .catatan-kecil { flex-basis: 100%; margin: 0; }

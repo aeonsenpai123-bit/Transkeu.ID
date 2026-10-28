@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+tests/
+docs/
+node_modules/

@@ -1,58 +1,79 @@
-// Server lokal: berkas statis + POST /api/tanya (menggunakan handler bersama dengan Vercel)
-import { createServer } from 'node:http';
+import http from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { tanganiTanya } from '../src/api-handler.js';
-import { adaKunci } from '../src/ai.js';
+import { resolve, extname, sep } from 'node:path';
+import { handleQuestion } from '../server/handler.js';
+import healthHandler from '../api/health.js';
 
-const akar = fileURLToPath(new URL('..', import.meta.url));
-const port = Number(process.env.PORT) || 5173;
-const jenis = {
+const root = resolve(import.meta.dirname, '..');
+const mime = {
   '.html': 'text/html',
-  '.js': 'text/javascript',
+  '.js': 'application/javascript',
   '.css': 'text/css',
-  '.json': 'application/json',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
   '.jpg': 'image/jpeg',
-  '.pdf': 'application/pdf',
-  '.ico': 'image/x-icon',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.json': 'application/json',
 };
 
-const kirimJson = (res, kode, isi) => res.writeHead(kode, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify(isi));
-
-async function bacaBadan(req) {
-  let teks = '';
-  for await (const potong of req) {
-    teks += potong;
-    if (teks.length > 8000) throw new Error('badan terlalu besar');
-  }
-  return JSON.parse(teks);
-}
-
-async function apiTanya(req, res) {
-  let badan = {};
+http.createServer(async (req, res) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   try {
-    badan = await bacaBadan(req);
+    const path = new URL(req.url, 'http://local').pathname;
+    if (path === '/api/tanya' && req.method === 'POST') {
+      if (!String(req.headers['content-type']).startsWith('application/json')) {
+        res.writeHead(415).end();
+        return;
+      }
+      let text = '';
+      for await (const chunk of req) {
+        text += chunk;
+        if (Buffer.byteLength(text) > 24000) {
+          res.writeHead(413).end();
+          return;
+        }
+      }
+      let body;
+      try {
+        body = JSON.parse(text);
+      } catch {
+        res.writeHead(400).end();
+        return;
+      }
+      const result = await handleQuestion(body, { ip: req.socket.remoteAddress });
+      res.writeHead(result.code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify(result.body));
+      return;
+    }
+    if (path === '/api/health' && req.method === 'GET') {
+      const mockRes = {
+        setHeader(k, v) { res.setHeader(k, v); },
+        status(code) {
+          return {
+            json(data) {
+              res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify(data));
+            },
+          };
+        },
+      };
+      return healthHandler(req, mockRes);
+    }
+    if (req.method !== 'GET') {
+      res.writeHead(405).end();
+      return;
+    }
+    const file = resolve(root, '.' + decodeURIComponent(path === '/' ? '/index.html' : path));
+    const rel = file.slice(root.length + 1);
+    if (!file.startsWith(root + sep) || !(rel === 'index.html' || ['src/', 'data/', 'assets/', 'docs/'].some(p => rel.startsWith(p)))) {
+      res.writeHead(404).end();
+      return;
+    }
+    const b = await readFile(file);
+    res.writeHead(200, { 'Content-Type': mime[extname(file)] ?? 'application/octet-stream' }).end(b);
   } catch {
-    return kirimJson(res, 400, { error: 'permintaan_tidak_sah' });
+    res.writeHead(404).end();
   }
-
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1';
-  const { kode, isi } = await tanganiTanya({ badan, ip });
-  return kirimJson(res, kode, isi);
-}
-
-createServer(async (req, res) => {
-  const jalur = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  if (jalur === '/api/tanya' && req.method === 'POST') return apiTanya(req, res);
-  const berkas = normalize(join(akar, jalur === '/' ? 'index.html' : jalur));
-  if (!berkas.startsWith(normalize(akar)) || berkas.includes(`${normalize('/node_modules/')}`) || berkas.includes('.env')) return res.writeHead(403).end();
-  try {
-    const isi = await readFile(berkas);
-    res.writeHead(200, { 'Content-Type': `${jenis[extname(berkas)] ?? 'application/octet-stream'}; charset=utf-8` }).end(isi);
-  } catch {
-    res.writeHead(404).end('Tidak ditemukan');
-  }
-}).listen(port, () => console.log(`Transkeu.ID jalan di http://localhost:${port} (AI: ${adaKunci() ? 'aktif' : 'mati, isi GEMINI_API_KEY di .env'})`));
+}).listen(Number(process.env.PORT) || 5173, '0.0.0.0', () => {
+  const port = process.env.PORT || 5173;
+  const hasKey = Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.ANTHROPIC_API_KEY);
+  console.log(`Transkeu.ID: http://localhost:${port} (AI: ${hasKey ? 'aktif' : 'Mode Dasar (kunci API belum diisi)'})`);
+});

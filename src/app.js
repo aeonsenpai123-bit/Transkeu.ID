@@ -164,13 +164,30 @@ function kepalaJawaban(hasil) {
     el('strong', {}, 'Transkeu'),
     hasil.ai
       ? el('span', { class: 'mode', title: 'AI menjelaskan; semua angka diisi program dari tabel fakta' }, 'AI · angka dari tabel fakta')
-      : el('span', { class: 'mode dasar', title: hasil.catatan_mode || 'AI sedang tidak aktif; jawaban disusun aturan sistem' }, 'Mode dasar'));
+      : el('span', { class: 'mode dasar', title: hasil.catatan_mode || 'AI sedang tidak aktif; jawaban disusun aturan sistem' }, 'Mode dasar'),
+    !hasil.ai && hasil.catatan_mode ? el('span', { class: 'catatan-kecil' }, hasil.catatan_mode) : null);
 }
 
 function chipsLanjutan(daftar) {
   if (!daftar?.length) return null;
   return el('div', {}, el('div', { class: 'judul-kecil' }, ikon('tanya'), 'Tanya lanjut'),
     el('div', { class: 'chips' }, daftar.map((q) => el('button', { type: 'button', class: 'chip', onclick: () => tanya(q) }, q))));
+}
+
+function paragrafBersumber(hasil, sudah) {
+  if (!hasil.paragraf?.length) return el('p', { class: 'ringkas' }, teksBeristilah(hasil.ringkas, sudah));
+  const sources = new Map((hasil.sumber ?? []).map(s => [s.id, s]));
+  return el('div', { class: 'narasi-ai' }, hasil.paragraf.map(p => el('div', { class: 'paragraf-ai' },
+    el('p', { class: 'ringkas' }, teksBeristilah(p.teks, sudah)),
+    el('div', { class: 'rujukan-paragraf' }, (p.source_ids ?? []).map(id => {
+      const source = sources.get(id);
+      if (!source) return null;
+      return el('button', { type: 'button', class: 'chip sumber-paragraf', onclick: () => {
+        if (source.fakta) bukaSumber(source.fakta);
+        else bukaSheet(source.judul, 'kamus', el('p', {}, source.teks), el('p', { class: 'catatan-kecil' }, 'Materi edukasi internal Transkeu.ID; bukan kutipan resmi pemerintah.'));
+      } }, source.jenis === 'kamus' ? 'Kamus: ' + source.judul.replace('Kamus Transkeu.ID: ', '') : 'Periksa sumber: ' + source.judul);
+    }))
+  )));
 }
 
 function kartuJawaban(pertanyaan, hasil) {
@@ -192,7 +209,8 @@ function kartuJawaban(pertanyaan, hasil) {
 
   return el('article', { class: 'kartu jawaban' },
     kepalaJawaban(hasil),
-    el('p', { class: 'ringkas' }, teksBeristilah(hasil.ringkas, sudah)),
+    paragrafBersumber(hasil, sudah),
+    hasil.visual_warning && el('p', { class: 'catatan-kecil' }, 'Grafik tidak ditampilkan karena cakupan atau periode datanya belum sebanding. Angkanya tetap dapat diperiksa pada sumber.'),
     hasil.visual && renderVisual(hasil.visual, { onBukaSumber: bukaSumber, el }),
     hasil.angka.length > 0 && el('div', {}, el('div', { class: 'judul-kecil' }, ikon('topik'), 'Angka utama'),
       el('ul', { class: 'daftar-angka' }, hasil.angka.map((b) => barisAngka(b, sudah)))),
@@ -231,9 +249,12 @@ async function tanyaServer(pertanyaan) {
       signal: AbortSignal.timeout(45000),
     });
     if (r.status === 429) toast('Batas pertanyaan AI hari ini habis. Jawaban memakai mode dasar.');
-    return r.ok ? await r.json() : null;
+    if (!r.ok) return { ...jawab(pertanyaan, data), ai: false, catatan_mode: 'Layanan AI belum bisa dihubungi. Jawaban ini memakai Mode Dasar.' };
+    const result = await r.json();
+    if (!['ok', 'istilah', 'tidak_tersedia'].includes(result?.status)) throw new Error('Respons tidak sesuai');
+    return result;
   } catch {
-    return null;
+    return { ...jawab(pertanyaan, data), ai: false, catatan_mode: 'Layanan AI belum bisa dihubungi. Jawaban ini memakai Mode Dasar.' };
   }
 }
 
