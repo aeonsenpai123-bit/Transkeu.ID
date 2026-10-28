@@ -5,6 +5,7 @@
 export const jejakAnggaran = [
   {
     id: 'jejak-pip',
+    tahun_anggaran: 2026,
     topik: 'pendidikan',
     nama: 'Program Indonesia Pintar (PIP)',
     sektor: 'Pendidikan',
@@ -47,6 +48,7 @@ export const jejakAnggaran = [
   },
   {
     id: 'jejak-kip-kuliah',
+    tahun_anggaran: 2026,
     topik: 'pendidikan',
     nama: 'Kartu Indonesia Pintar (KIP) Kuliah',
     sektor: 'Pendidikan',
@@ -89,6 +91,7 @@ export const jejakAnggaran = [
   },
   {
     id: 'jejak-bos',
+    tahun_anggaran: 2026,
     topik: 'pendidikan',
     nama: 'Bantuan Operasional Sekolah (BOS)',
     sektor: 'Pendidikan',
@@ -131,6 +134,7 @@ export const jejakAnggaran = [
   },
   {
     id: 'jejak-pbi-jkn',
+    tahun_anggaran: 2026,
     topik: 'kesehatan',
     nama: 'Penerima Bantuan Iuran JKN (PBI JKN)',
     sektor: 'Kesehatan',
@@ -173,6 +177,7 @@ export const jejakAnggaran = [
   },
   {
     id: 'jejak-skrining-kesehatan',
+    tahun_anggaran: 2026,
     topik: 'kesehatan',
     nama: 'Pemeriksaan Kesehatan Gratis',
     sektor: 'Kesehatan',
@@ -215,6 +220,7 @@ export const jejakAnggaran = [
   },
   {
     id: 'jejak-pkh',
+    tahun_anggaran: 2026,
     topik: 'perlinsos',
     nama: 'Program Keluarga Harapan (PKH)',
     sektor: 'Perlindungan Sosial',
@@ -257,6 +263,7 @@ export const jejakAnggaran = [
   },
   {
     id: 'jejak-jalan-nasional',
+    tahun_anggaran: 2026,
     topik: 'infrastruktur',
     nama: 'Pembangunan & Preservasi Jalan Nasional',
     sektor: 'Infrastruktur',
@@ -299,6 +306,7 @@ export const jejakAnggaran = [
   },
   {
     id: 'jejak-subsidi-energi',
+    tahun_anggaran: 2026,
     topik: 'subsidi_energi',
     nama: 'Subsidi Energi (BBM, LPG 3kg, & Listrik)',
     sektor: 'Subsidi Energi',

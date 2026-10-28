@@ -1,3 +1,5 @@
+import { renderImpacts } from './impacts-ui.js';
+import { renderArticles } from './articles-ui.js';
 import { fakta, kegunaan } from '../data/fakta.js';
 import { topik, contohAwal } from '../data/topik.js';
 import { istilah } from '../data/istilah.js';
@@ -158,13 +160,55 @@ function umpanBalik(pertanyaan, hasil) {
 }
 
 /* ---------- Kartu jawaban ---------- */
+function bukaPengaturanAI() {
+  const tersimpan = simpan.baca('transkeu.api_key', '');
+  const input = el('input', {
+    type: 'password',
+    value: tersimpan,
+    placeholder: 'Tempel kunci API Google Gemini (AIza...) atau Anthropic (sk-ant-...)',
+    style: 'width:100%;padding:10px 12px;margin:12px 0 6px;border:1px solid var(--garis-kuat);border-radius:10px;font-family:monospace;font-size:13px;',
+  });
+  const statusPesan = el('p', { class: 'catatan-kecil' }, tersimpan ? 'Status: Kunci API aktif tersimpan di peramban ini.' : 'Kunci disimpan aman hanya di localStorage peramban Anda.');
+  const tombolSimpan = el('button', {
+    class: 'tombol tombol-utama',
+    type: 'button',
+    onclick: () => {
+      const v = input.value.trim();
+      simpan.tulis('transkeu.api_key', v);
+      toast(v ? 'Kunci API berhasil disimpan! Tanya AI kini aktif.' : 'Kunci API dihapus. Menggunakan setelan server.');
+      $('sheet').close();
+    },
+  }, 'Simpan Kunci');
+  const tombolHapus = tersimpan ? el('button', {
+    class: 'tombol',
+    type: 'button',
+    style: 'margin-left:8px',
+    onclick: () => {
+      simpan.tulis('transkeu.api_key', '');
+      toast('Kunci API lokal dihapus.');
+      $('sheet').close();
+    },
+  }, 'Hapus') : null;
+
+  bukaSheet(
+    'Pengaturan Kunci AI',
+    'pengaturan',
+    el('div', { style: 'padding:8px 0' },
+      el('p', {}, 'Aktifkan mode percakapan sehari-hari dengan memasukkan kunci API Google Gemini (gratis di aistudio.google.com) atau Anthropic Claude.'),
+      input,
+      el('div', { style: 'display:flex;align-items:center;margin-top:10px' }, tombolSimpan, tombolHapus),
+      statusPesan
+    )
+  );
+}
+
 function kepalaJawaban(hasil) {
   return el('div', { class: 'jawaban-kepala' },
     el('span', { class: 'avatar', 'aria-hidden': 'true' }, ikon('kilau')),
     el('strong', {}, 'Transkeu'),
     hasil.ai
       ? el('span', { class: 'mode', title: 'AI menjelaskan; semua angka diisi program dari tabel fakta' }, 'AI · angka dari tabel fakta')
-      : el('span', { class: 'mode dasar', title: hasil.catatan_mode || 'AI sedang tidak aktif; jawaban disusun aturan sistem' }, 'Mode dasar'),
+      : el('span', { class: 'mode dasar', style: 'cursor:pointer', onclick: bukaPengaturanAI, title: hasil.catatan_mode ? `${hasil.catatan_mode} (Ketuk untuk atur kunci API)` : 'AI sedang tidak aktif; ketuk untuk atur kunci API' }, 'Mode dasar'),
     !hasil.ai && hasil.catatan_mode ? el('span', { class: 'catatan-kecil' }, hasil.catatan_mode) : null);
 }
 
@@ -195,6 +239,8 @@ function kartuJawaban(pertanyaan, hasil) {
   if (hasil.status === 'istilah') {
     return el('article', { class: 'kartu jawaban' }, kepalaJawaban(hasil),
       el('p', { class: 'ringkas' }, el('strong', {}, hasil.istilah.istilah), `: ${hasil.istilah.arti}`),
+      renderImpacts(hasil.hasil_lapangan, { el }),
+      renderArticles(hasil.bacaan_terkait, { el }),
       chipsLanjutan(hasil.lanjutan),
       umpanBalik(pertanyaan, hasil));
   }
@@ -203,6 +249,8 @@ function kartuJawaban(pertanyaan, hasil) {
       el('p', { class: 'ringkas' }, ikon('peringatan'), el('span', {}, hasil.pesan ?? PESAN_TIDAK_TERSEDIA)),
       hasil.alasan ? el('p', {}, hasil.alasan) : null,
       el('a', { class: 'tombol', href: hasil.portal.url, target: '_blank', rel: 'noopener noreferrer' }, ikon('keluar'), `Buka ${hasil.portal.nama}`),
+      renderImpacts(hasil.hasil_lapangan, { el }),
+      renderArticles(hasil.bacaan_terkait, { el }),
       chipsLanjutan(hasil.lanjutan),
       umpanBalik(pertanyaan, hasil));
   }
@@ -231,7 +279,9 @@ function kartuJawaban(pertanyaan, hasil) {
         el('button', { type: 'button', class: 'tombol-sumber', onclick: () => bukaSumber(b) },
           el('span', { class: 'no' }, `[${n + 1}]`), el('span', { class: 'teks' }, `${labelJenis(b)}: ${judulSumber(b)}`), ikon('panah')))))),
     hasil.batasan?.length > 0 && el('div', { class: 'batasan' }, el('div', { class: 'judul-kecil', style: 'margin:0' }, ikon('info'), 'Batasan'), hasil.batasan.map((t) => el('p', {}, t))),
-    chipsLanjutan(hasil.lanjutan),
+    renderImpacts(hasil.hasil_lapangan, { el }),
+      renderArticles(hasil.bacaan_terkait, { el }),
+      chipsLanjutan(hasil.lanjutan),
     umpanBalik(pertanyaan, hasil),
   );
 }
@@ -240,12 +290,18 @@ function kartuJawaban(pertanyaan, hasil) {
 const riwayatAI = [];
 let sedangMenjawab = false;
 
-async function tanyaServer(pertanyaan) {
+async function tanyaServer(pertanyaan, konteks_lapangan = {}) {
   try {
+    const userKey = simpan.baca('transkeu.api_key', '') || undefined;
     const r = await fetch('/api/tanya', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pertanyaan, riwayat: riwayatAI.slice(-3) }),
+      body: JSON.stringify({
+        pertanyaan,
+        riwayat: riwayatAI.slice(-3),
+        konteks_lapangan,
+        api_key: userKey,
+      }),
       signal: AbortSignal.timeout(45000),
     });
     if (r.status === 429) toast('Batas pertanyaan AI hari ini habis. Jawaban memakai mode dasar.');
@@ -262,7 +318,7 @@ function aturChips(daftar) {
   $('chips').replaceChildren(...daftar.map((q) => el('button', { type: 'button', class: 'chip', onclick: () => tanya(q) }, q)));
 }
 
-async function tanya(pertanyaan) {
+async function tanya(pertanyaan, konteks_lapangan = {}) {
   const q = pertanyaan.trim();
   if (!q || sedangMenjawab) return;
   sedangMenjawab = true;
@@ -273,7 +329,7 @@ async function tanya(pertanyaan) {
   $('obrolan').append(gelembung, memuat);
   gelembung.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  const hasil = (await tanyaServer(q)) ?? jawab(q, data);
+  const hasil = (await tanyaServer(q, konteks_lapangan)) ?? jawab(q, data);
   const kartu = kartuJawaban(q, hasil);
   memuat.replaceWith(kartu);
   if (hasil.status === 'ok') riwayatAI.push({ tanya: q, jawab: hasil.ringkas });
@@ -284,10 +340,19 @@ async function tanya(pertanyaan) {
 
 function sapa() {
   const terakhir = simpan.baca('transkeu.riwayat', []);
+  const tersimpanKey = simpan.baca('transkeu.api_key', '');
   return el('div', { class: 'sapa', id: 'sapa' },
     el('img', { class: 'avatar-besar logo-avatar', src: 'assets/logo.jpg', alt: 'Logo Transkeu.ID' }),
     el('h2', {}, 'Halo, aku Transkeu'),
-    el('p', {}, 'Aku membantu menjelaskan ke mana uang rakyat di APBN dipakai. Tanyakan dengan bahasa sehari-hari; setiap angka bisa kamu cek sumbernya.'),
+    el('p', {}, 'Aku membantu menjelaskan ke mana uang rakyat di APBN dipakai dengan bahasa sehari-hari. Setiap angka dan grafik bisa kamu cek sumber resminya.'),
+    el('div', { style: 'margin: 12px 0' },
+      el('button', {
+        type: 'button',
+        class: 'chip',
+        style: 'border-color:var(--biru-500);background:var(--biru-50);color:var(--biru-900);font-weight:700',
+        onclick: bukaPengaturanAI,
+      }, tersimpanKey ? '✨ AI Aktif (Kunci tersimpan)' : '⚙️ Aktifkan AI (Masukkan Kunci Gemini/Claude)')
+    ),
     el('div', { class: 'saran' }, contohAwal.map((q) => el('button', { type: 'button', onclick: () => tanya(q) }, q))),
     terakhir.length ? el('div', { style: 'margin-top:20px' }, el('div', { class: 'judul-kecil', style: 'justify-content:center' }, 'Pertanyaanmu sebelumnya'),
       el('div', { class: 'saran' }, terakhir.slice(0, 4).map((q) => el('button', { type: 'button', onclick: () => tanya(q) }, q)))) : null);
@@ -477,10 +542,15 @@ function kartuJejak(item) {
       renderJejakStep('2. Realisasi Belanja', realisasi, 'realisasi'),
       renderJejakStep('3. Capaian Fisik', capaian, 'capaian', capaian.status),
     ),
+    el('div', { class: 'jejak-bukti-lapangan' },
+      el('h4', {}, '4. Hasil dan dampak di lapangan'),
+      el('p', {}, 'Periksa manfaat, perubahan yang diamati, dan masalah pelaksanaan berdasarkan bukti evaluasi. Jika bukti belum dimuat, hasil tidak diperkirakan.'),
+      el('button', { type: 'button', class: 'tombol', onclick: () => tanya(`Apa hasil dan dampak ${item.nama} TA ${item.tahun_anggaran ?? 2026}?`, { program_id: item.id, tahun_anggaran: item.tahun_anggaran ?? 2026 }) }, 'Periksa bukti hasil dan dampak')
+    ),
     el('p', { class: 'jejak-catatan-kaki' },
       ikon('info'),
       el('strong', {}, ' Catatan Pengawasan: '),
-      item.catatan_pengawasan,
+      'Penyerapan dana, capaian layanan, dan perubahan yang dirasakan masyarakat perlu diperiksa terpisah. Periksa juga apakah pagu di atas mencakup satu program atau paket program.',
     ),
   );
 }

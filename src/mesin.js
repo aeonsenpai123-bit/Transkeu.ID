@@ -109,14 +109,36 @@ export function jawab(pertanyaan, { fakta, kegunaan = [], topik, istilah = [] })
   else if (anggaran && !realisasiSama) batasan.push('Cakupan realisasi berbeda dengan cakupan anggaran, jadi persentase penyerapan tidak dihitung.');
   if (tp.batasan) batasan.push(tp.batasan);
 
+  const kegunaanTopik = kegunaan.filter((k) => (k.topik === tp.id || (tp.id === 'pajak' && k.topik === 'umum')) && k.tahun_anggaran === tahun);
+  const paragraf = [];
+  if (kalimat.length > 0) {
+    paragraf.push({
+      teks: kalimat.join(' '),
+      source_ids: angka.map((a) => a.id),
+    });
+  }
+  if (kegunaanTopik.length > 0) {
+    paragraf.push({
+      teks: `Alokasi dana ini disalurkan untuk berbagai program nyata masyarakat: ${kegunaanTopik.slice(0, 3).map((k) => k.teks).join('; ')}.`,
+      source_ids: kegunaanTopik.slice(0, 3).map((k) => k.id),
+    });
+  }
+
+  const sumber = [
+    ...angka.map((a) => ({ id: a.id, jenis: 'dokumen', judul: a.dokumen, fakta: a, url: a.url })),
+    ...kegunaanTopik.map((k) => ({ id: k.id, jenis: 'dokumen', judul: k.dokumen, fakta: { ...k, pos: k.teks, nilai: null }, url: k.url })),
+  ];
+
   return {
     status: 'ok',
     topik: tp,
     tahun,
     ringkas: kalimat.slice(0, 3).join(' '),
+    paragraf,
+    sumber,
     angka,
     hitung,
-    kegunaan: kegunaan.filter((k) => (k.topik === tp.id || (tp.id === 'pajak' && k.topik === 'umum')) && k.tahun_anggaran === tahun),
+    kegunaan: kegunaanTopik,
     visual: visualOtomatis(angka, tp.id),
     batasan,
     lanjutan: (tp.contoh ?? []).filter((c) => normal(c) !== t),

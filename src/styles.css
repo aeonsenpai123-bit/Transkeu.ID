@@ -536,3 +536,9 @@ blockquote.kutipan { margin: 8px 0 16px; padding: 12px 14px; background: var(--b
 .sumber-paragraf { font-size: .8rem; text-align: left; white-space: normal; max-width: 100%; min-height: 44px; }
 .jawaban-kepala { flex-wrap: wrap; }
 .jawaban-kepala > .catatan-kecil { flex-basis: 100%; margin: 0; }
+
+.bacaan-terkait { border-top: 1px solid #d9e4f2; margin-top: 20px; padding-top: 16px; }
+.kartu-bacaan { background: #f4f8ff; border: 1px solid #d9e4f2; border-radius: 16px; padding: 16px; margin: 12px 0; }
+.kartu-bacaan h4 { margin: 10px 0; line-height: 1.5; }
+.kartu-bacaan a { color: #1749b5; text-decoration: underline; text-underline-offset: 3px; }
+.hasil-lapangan, .jejak-bukti-lapangan { border-top: 1px solid #d9e4f2; margin-top: 16px; padding-top: 16px; }
