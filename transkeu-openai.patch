@@ -1,0 +1,701 @@
+diff --git a/.env.example b/.env.example
+index 2b39caa..7833e46 100644
+--- a/.env.example
++++ b/.env.example
+@@ -1,5 +1,10 @@
+ # Salin jadi .env lalu isi. Jangan commit .env.
+-# Kunci API LLM (pilih salah satu atau keduanya):
++# Provider utama. Pilihan: openai, gemini, anthropic.
++LLM_PROVIDER=openai
++OPENAI_API_KEY=
++OPENAI_MODEL=gpt-4.1-mini
++
++# Provider alternatif (pilih LLM_PROVIDER yang sesuai):
+ # 1. Google Gemini (gratis di https://aistudio.google.com/)
+ GEMINI_API_KEY=
+ GEMINI_MODEL=gemini-2.5-flash
+@@ -14,4 +19,7 @@ BATAS_TANYA_HARIAN=50
+ # Upstash Redis untuk multi-instance production di Vercel (opsional untuk lokal)
+ UPSTASH_REDIS_REST_URL=
+ UPSTASH_REDIS_REST_TOKEN=
+-RATE_LIMIT_SALT=transkeu-salt-key
++RATE_LIMIT_SALT=
++
++# Opsional: katalog artikel dan bukti lapangan PostgreSQL
++DATABASE_URL=
+diff --git a/README.md b/README.md
+index 82df963..a9fb19f 100644
+--- a/README.md
++++ b/README.md
+@@ -20,9 +20,9 @@ Butuh Node.js 22 atau lebih baru. Tanpa langkah build rumit.
+ 
+ ```powershell
+ npm install
+-copy .env.example .env   # lalu isi GEMINI_API_KEY atau ANTHROPIC_API_KEY di .env
++copy .env.example .env   # isi OPENAI_API_KEY; LLM_PROVIDER=openai
+ npm start                # buka http://localhost:5173
+-npm test                 # menjalankan 99 tes unit otomatis
++npm test                 # menjalankan tes unit, kontrak provider, dan DOM
+ npm run audit:data       # audit metadata korpus fakta
+ ```
+ 
+@@ -40,13 +40,15 @@ Agar Tanya AI aktif di Vercel:
+ 1. Buka dashboard proyek Anda di [vercel.com](https://vercel.com).
+ 2. Pilih proyek **transkeu-id** -> Masuk ke tab **Settings** -> **Environment Variables**.
+ 3. Tambahkan variabel berikut:
+-   - `GEMINI_API_KEY`: Kunci API Google Gemini (dapat dibuat gratis di [Google AI Studio](https://aistudio.google.com/)).
+-   - `GEMINI_MODEL` *(Opsional)*: `gemini-2.5-flash` (bawaan) atau `gemini-1.5-flash`.
+-   - Atau `ANTHROPIC_API_KEY`: Kunci API Claude dari Anthropic Console.
+-   - `BATAS_TANYA_HARIAN` *(Opsional)*: Batas pertanyaan AI per IP per hari (bawaan: `50`).
+-   - `UPSTASH_REDIS_REST_URL` & `UPSTASH_REDIS_REST_TOKEN` *(Opsional)*: Rate limiting terpusat lintas instance serverless Vercel.
++   - `LLM_PROVIDER`: `openai`.
++   - `OPENAI_API_KEY`: kunci API dari akun OpenAI milik pengelola, hanya di server.
++   - `OPENAI_MODEL`: `gpt-4.1-mini` (dapat disesuaikan dengan model yang tersedia pada akun).
++   - `BATAS_TANYA_HARIAN`: `50` untuk batas harian per IP.
++   - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, dan `RATE_LIMIT_SALT`: wajib untuk pembatas pemakaian lintas instance produksi. Buat salt acak yang tidak dipublikasikan.
++   - `DATABASE_URL`: opsional untuk katalog PostgreSQL; tanpa ini aplikasi memakai katalog lokal.
++   - Provider lama tetap tersedia: gunakan `LLM_PROVIDER=gemini` atau `anthropic` dan kunci server yang sesuai.
+ 4. Lakukan **Redeploy** (atau *git push*) agar variabel lingkungan mulai berlaku.
+-5. Cek endpoint `https://transkeu-id.vercel.app/api/health` untuk memastikan konfigurasi terdeteksi dengan status `configured: true`.
++5. Cek endpoint `https://transkeu-id.vercel.app/api/health` untuk memastikan konfigurasi terdeteksi dengan status `configured: true`. Status ini belum membuktikan panggilan model berhasil; uji pertanyaan sampai respons berisi `ai: true`.
+ 
+ | Path | Isi |
+ | --- | --- |
+@@ -55,7 +57,7 @@ Agar Tanya AI aktif di Vercel:
+ | `server/retrieval.js` | Retrieval leksikal eviden APBN, perluasan sinonim sehari-hari, dan konteks pertanyaan lanjutan |
+ | `server/prompt.js` | Instruksi sistem pemandu literasi fiskal dan JSON Schema terstruktur |
+ | `server/grounding.js` | Validator grounding: pencegahan halusinasi angka, kalkulasi persen, dan validasi visual |
+-| `server/llm.js` | Integrasi LLM (Google Gemini & Anthropic Claude) dengan self-repair loop |
++| `server/llm.js` | Integrasi LLM (OpenAI, Google Gemini & Anthropic Claude) dengan self-repair loop |
+ | `server/handler.js` | Handler pertanyaan, rate limiting terdistribusi, dan fallback Mode Dasar transparan |
+ | `api/tanya.js`, `api/health.js` | Vercel Serverless Function endpoints |
+ | `src/ai.js` | Integrasi Google Gemini (`@google/genai`) dengan persona pemandu literasi fiskal |
+@@ -112,3 +114,9 @@ Umpan balik dan skor kuis disimpan di perangkat pengguna (localStorage). Tim men
+ | `.claude/skills/ponytail/` | Skill kode minimal (MIT, adaptasi DietrichGebert/ponytail) |
+ | `plugins/` | Salinan lokal plugin mattpocock-skills (MIT) dan ui-ux-pro-max (MIT) |
+ | `.mcp.json` | Server MCP 21st.dev |
++
++## Integrasi OpenAI dan keterbatasan
++
++Lihat [panduan aktivasi](docs/AKTIVASI-OPENAI.md). Endpoint aktif memakai `server/llm.js`; modul `src/ai.js` adalah jalur lama yang tetap dipertahankan untuk kompatibilitas tes. Pengunjung tidak perlu memasukkan kunci API. Kunci yang dahulu disimpan pada peramban dihapus saat layar sambutan dimuat.
++
++Artikel Melek APBN merupakan bacaan pendamping, bukan sumber angka resmi. Katalog `data/bukti-lapangan.js` masih kosong: sistem menyatakan bukti belum tersedia, bukan menyimpulkan program tidak berdampak. Retrieval saat ini berbasis kata kunci dari korpus yang dikurasi, belum pencarian seluruh dokumen pemerintah atau sinkronisasi berita otomatis.
+diff --git a/api/health.js b/api/health.js
+index 1884402..c98385e 100644
+--- a/api/health.js
++++ b/api/health.js
+@@ -1,12 +1,15 @@
++import { providerConfig } from '../server/provider.js';
+ import { corpus, factEligible } from '../server/retrieval.js';
+ 
+ export default function handler(req, res) {
+   res.setHeader('Cache-Control', 'no-store');
+-  const configured = Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.ANTHROPIC_API_KEY);
+-  const model = process.env.GEMINI_MODEL || process.env.ANTHROPIC_MODEL || (process.env.GEMINI_API_KEY ? 'gemini-2.5-flash' : 'claude-sonnet-4-6');
++  const config = providerConfig(process.env);
++  const configured = config.supported && Boolean(config.apiKey);
++  const model = config.model ?? null;
+   res.status(200).json({
+     service: 'Transkeu.ID',
+     configured,
++    provider: config.provider,
+     limiter_configured: Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
+     model,
+     eligible_facts: corpus.fakta.filter(factEligible).length,
+diff --git a/docs/AKTIVASI-OPENAI.md b/docs/AKTIVASI-OPENAI.md
+new file mode 100644
+index 0000000..0cbd845
+--- /dev/null
++++ b/docs/AKTIVASI-OPENAI.md
+@@ -0,0 +1,68 @@
++# Aktivasi OpenAI untuk Transkeu.ID
++
++Perubahan disiapkan berdasarkan repositori aeonsenpai123-bit/Transkeu.ID, commit awal 81f7637. Belum dikirim ke GitHub atau diterapkan di Vercel pada tahap penyiapan ini.
++
++## Yang tersedia
++
++- OpenAI Responses API dengan JSON Schema ketat dan satu kesempatan perbaikan jika validasi sumber gagal.
++- Bahasa sehari-hari melalui instruksi sistem; angka diisi oleh kode dari fakta yang lolos metadata, bukan angka bebas dari model.
++- Sumber per paragraf, grafik dan tabel interaktif yang sudah ada, serta konteks pertanyaan lanjutan.
++- Bacaan terkait Melek APBN dan panel hasil/dampak dari modul yang sudah ada di repositori.
++- Pemilihan provider eksplisit; Gemini dan Claude tetap dapat dipakai.
++- Kunci API hanya dari server. Penyimpanan kunci pada browser dan badge aktivasi semu dihapus.
++- Pembatas pemakaian lintas instance produksi wajib tersedia sebelum panggilan AI berbayar.
++- Dependensi PostgreSQL yang diperlukan modul katalog ditambahkan.
++
++## Menerapkan patch
++
++Dari repositori bersih yang masih pada commit dasar di atas:
++
++```sh
++git switch -c feat/openai-tanya-ai
++git apply --check transkeu-openai.patch
++git apply transkeu-openai.patch
++npm ci
++npm test
++```
++
++Jangan paksa patch jika pemeriksaan gagal; gabungkan perubahannya dengan versi terbaru. Paket juga memuat format-patch untuk opsi `git am transkeu-openai.commit.patch`, gunakan salah satu metode saja.
++
++## Mengaktifkan di Vercel
++
++1. Masukkan perubahan melalui branch dan pull request di repositori yang benar.
++2. Pada proyek Vercel yang terhubung, isi Environment Variables untuk Preview terlebih dahulu:
++
++| Nama | Nilai |
++| --- | --- |
++| LLM_PROVIDER | openai |
++| OPENAI_API_KEY | Kunci API milik pengelola, jangan ditempel dalam chat atau kode |
++| OPENAI_MODEL | gpt-4.1-mini, atau model yang mendukung Structured Outputs dan tersedia di akun |
++| UPSTASH_REDIS_REST_URL | URL REST instance Redis pengelola |
++| UPSTASH_REDIS_REST_TOKEN | Token REST Redis pengelola |
++| RATE_LIMIT_SALT | Nilai acak rahasia |
++| BATAS_TANYA_HARIAN | 50 |
++| DATABASE_URL | Opsional, koneksi PostgreSQL |
++
++3. Deploy Preview. Cek `/api/health`: `provider: openai`, `configured: true`, `limiter_configured: true`. Ini hanya memeriksa keberadaan konfigurasi.
++4. Tanyakan “Duit buat sekolah tahun 2026 berapa?”; pastikan respons `/api/tanya` memiliki `ai: true`, rujukan terbuka, dan grafik sesuai angka jawaban. Uji pertanyaan lanjutan, tahun tanpa data, dan konsep tanpa grafik.
++5. Uji kartu Melek APBN yang relevan dan Jejak Anggaran. Panel hasil lapangan harus jujur bahwa bukti belum dimuat.
++6. Setelah Preview lolos, isi variabel Production dan terapkan perubahan ke branch deployment. Periksa pengeluaran dan batas pemakaian pada akun API.
++
++Akses ChatGPT dalam percakapan ini bukan kunci API aplikasi. Pengelola memerlukan akses API dan kuota pada akun OpenAI sendiri. Jangan menyalin kredensial percakapan atau token ChatGPT ke website.
++
++## Memasukkan artikel dan hasil lapangan
++
++Tanpa DATABASE_URL, kurasi metadata di `data/artikel.js` dan bukti di `data/bukti-lapangan.js`. Dengan PostgreSQL, jalankan `npm run db:seed-artikel` setelah mengisi DATABASE_URL di lingkungan server tepercaya. Perintah tersebut membuat kedua tabel dan memasukkan metadata artikel; tidak mengisi bukti dampak rekaan.
++
++Setiap bukti lapangan harus cocok dengan program, tahun anggaran, wilayah, dan sumber pendanaan. Bedakan output, outcome, temuan pelaksanaan, dan dampak kausal. Berita pendamping tidak otomatis membuktikan dampak. Antarmuka lokasi belum tersedia; konteks wilayah dapat dikirim melalui API. Baca `docs/HASIL-DAN-DAMPAK.md` dan `docs/MELEK-APBN.md`.
++
++## Verifikasi penyiapan
++
++103 tes otomatis lulus, termasuk kontrak OpenAI yang disimulasikan, validasi angka/sumber/grafik, fallback produksi tanpa limiter, dan render DOM. Belum ada panggilan OpenAI dengan kunci nyata, migrasi PostgreSQL nyata, atau deployment Vercel. Hasil tes bukan angka akurasi model terhadap paper.
++
++## Dokumentasi resmi OpenAI
++
++- https://developers.openai.com/api/docs/guides/structured-outputs
++- https://developers.openai.com/api/docs/models/gpt-4.1-mini
++
++Dokumentasi diakses pada tahap implementasi. Model dapat diubah melalui OPENAI_MODEL sesuai akses akun; validasi ulang jawaban setelah perubahan.
+diff --git a/package-lock.json b/package-lock.json
+index 2dee88e..17702bb 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -6,10 +6,14 @@
+     "": {
+       "name": "transkeu-id",
+       "dependencies": {
+-        "@google/genai": "^2.31.0"
++        "@google/genai": "^2.31.0",
++        "pg": "^8.23.1"
+       },
+       "devDependencies": {
+         "linkedom": "^0.18.14"
++      },
++      "engines": {
++        "node": ">=22"
+       }
+     },
+     "node_modules/@acemir/cssom": {
+@@ -682,6 +686,134 @@
+         "node": ">=8"
+       }
+     },
++    "node_modules/pg": {
++      "version": "8.23.1",
++      "resolved": "https://registry.npmjs.org/pg/-/pg-8.23.1.tgz",
++      "integrity": "sha512-aL96AHANtWjPLDOLqnhx+ngp9+UK7ETEU8VJrDCGvsSSi/mGLcWYsS6Herg7lmaBJe4uwrfqsa7gTEFaSizDoQ==",
++      "license": "MIT",
++      "dependencies": {
++        "pg-connection-string": "^2.14.1",
++        "pg-pool": "^3.14.0",
++        "pg-protocol": "^1.16.1",
++        "pg-types": "2.2.0",
++        "pgpass": "1.0.5"
++      },
++      "engines": {
++        "node": ">= 16.0.0"
++      },
++      "optionalDependencies": {
++        "pg-cloudflare": "^1.4.1"
++      },
++      "peerDependencies": {
++        "pg-native": ">=3.0.1"
++      },
++      "peerDependenciesMeta": {
++        "pg-native": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/pg-cloudflare": {
++      "version": "1.4.1",
++      "resolved": "https://registry.npmjs.org/pg-cloudflare/-/pg-cloudflare-1.4.1.tgz",
++      "integrity": "sha512-6PQbsFWZcp9EmJEwy5cGQ2La+AMWpP46lgbb8X+U/XsHIUweYDNCpeuKck5RxL2MdVFi7krbbEi5nX4Zh7JhrQ==",
++      "license": "MIT",
++      "optional": true
++    },
++    "node_modules/pg-connection-string": {
++      "version": "2.14.1",
++      "resolved": "https://registry.npmjs.org/pg-connection-string/-/pg-connection-string-2.14.1.tgz",
++      "integrity": "sha512-qR3kGNPBLpCNtz0evbKA0Y/MRFXwSSdT+pTJvYp/bXTcReZbvX1kzF0IyTc1QnxqF7AZbOeBhNL8R5mYQZV/MA==",
++      "license": "MIT"
++    },
++    "node_modules/pg-int8": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/pg-int8/-/pg-int8-1.0.1.tgz",
++      "integrity": "sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==",
++      "license": "ISC",
++      "engines": {
++        "node": ">=4.0.0"
++      }
++    },
++    "node_modules/pg-pool": {
++      "version": "3.14.0",
++      "resolved": "https://registry.npmjs.org/pg-pool/-/pg-pool-3.14.0.tgz",
++      "integrity": "sha512-gKtPkFdQPU3DksooVLi9LsjZxrsBUZIpa+7aVx+LV5pNh0KzP4Zleud2po+ConrxbuXGBJ6Hfer6hdgpIBpBaw==",
++      "license": "MIT",
++      "peerDependencies": {
++        "pg": ">=8.0"
++      }
++    },
++    "node_modules/pg-protocol": {
++      "version": "1.16.1",
++      "resolved": "https://registry.npmjs.org/pg-protocol/-/pg-protocol-1.16.1.tgz",
++      "integrity": "sha512-p9VOFMiHB/ZbJATetbg+99PxssTVSQRnyuPSQ67mN1+1KBOjZaZ83ZQzltnxPhJwSsC3nwVjJ10DVJlerbFzLg==",
++      "license": "MIT"
++    },
++    "node_modules/pg-types": {
++      "version": "2.2.0",
++      "resolved": "https://registry.npmjs.org/pg-types/-/pg-types-2.2.0.tgz",
++      "integrity": "sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==",
++      "license": "MIT",
++      "dependencies": {
++        "pg-int8": "1.0.1",
++        "postgres-array": "~2.0.0",
++        "postgres-bytea": "~1.0.0",
++        "postgres-date": "~1.0.4",
++        "postgres-interval": "^1.1.0"
++      },
++      "engines": {
++        "node": ">=4"
++      }
++    },
++    "node_modules/pgpass": {
++      "version": "1.0.5",
++      "resolved": "https://registry.npmjs.org/pgpass/-/pgpass-1.0.5.tgz",
++      "integrity": "sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==",
++      "license": "MIT",
++      "dependencies": {
++        "split2": "^4.1.0"
++      }
++    },
++    "node_modules/postgres-array": {
++      "version": "2.0.0",
++      "resolved": "https://registry.npmjs.org/postgres-array/-/postgres-array-2.0.0.tgz",
++      "integrity": "sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=4"
++      }
++    },
++    "node_modules/postgres-bytea": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/postgres-bytea/-/postgres-bytea-1.0.1.tgz",
++      "integrity": "sha512-5+5HqXnsZPE65IJZSMkZtURARZelel2oXUEO8rH83VS/hxH5vv1uHquPg5wZs8yMAfdv971IU+kcPUczi7NVBQ==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=0.10.0"
++      }
++    },
++    "node_modules/postgres-date": {
++      "version": "1.0.7",
++      "resolved": "https://registry.npmjs.org/postgres-date/-/postgres-date-1.0.7.tgz",
++      "integrity": "sha512-suDmjLVQg78nMK2UZ454hAG+OAW+HQPZ6n++TNDUX+L0+uUlLywnoxJKDou51Zm+zTCjrCl0Nq6J9C5hP9vK/Q==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=0.10.0"
++      }
++    },
++    "node_modules/postgres-interval": {
++      "version": "1.2.0",
++      "resolved": "https://registry.npmjs.org/postgres-interval/-/postgres-interval-1.2.0.tgz",
++      "integrity": "sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==",
++      "license": "MIT",
++      "dependencies": {
++        "xtend": "^4.0.0"
++      },
++      "engines": {
++        "node": ">=0.10.0"
++      }
++    },
+     "node_modules/protobufjs": {
+       "version": "7.6.6",
+       "resolved": "https://registry.npmjs.org/protobufjs/-/protobufjs-7.6.6.tgz",
+@@ -734,6 +866,15 @@
+       ],
+       "license": "MIT"
+     },
++    "node_modules/split2": {
++      "version": "4.2.0",
++      "resolved": "https://registry.npmjs.org/split2/-/split2-4.2.0.tgz",
++      "integrity": "sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==",
++      "license": "ISC",
++      "engines": {
++        "node": ">= 10.x"
++      }
++    },
+     "node_modules/uhyphen": {
+       "version": "0.2.0",
+       "resolved": "https://registry.npmjs.org/uhyphen/-/uhyphen-0.2.0.tgz",
+@@ -776,6 +917,15 @@
+           "optional": true
+         }
+       }
++    },
++    "node_modules/xtend": {
++      "version": "4.0.2",
++      "resolved": "https://registry.npmjs.org/xtend/-/xtend-4.0.2.tgz",
++      "integrity": "sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=0.4"
++      }
+     }
+   }
+ }
+diff --git a/package.json b/package.json
+index 7514757..b8c1087 100644
+--- a/package.json
++++ b/package.json
+@@ -5,12 +5,17 @@
+   "scripts": {
+     "start": "node --env-file-if-exists=.env scripts/serve.js",
+     "test": "node --test",
+-    "audit:data": "node scripts/audit-data.js"
++    "audit:data": "node scripts/audit-data.js",
++    "db:seed-artikel": "node --env-file-if-exists=.env scripts/seed-artikel.js"
+   },
+   "dependencies": {
+-    "@google/genai": "^2.31.0"
++    "@google/genai": "^2.31.0",
++    "pg": "^8.23.1"
+   },
+   "devDependencies": {
+     "linkedom": "^0.18.14"
++  },
++  "engines": {
++    "node": ">=22"
+   }
+ }
+diff --git a/scripts/serve.js b/scripts/serve.js
+index 096fdda..ca5bd25 100644
+--- a/scripts/serve.js
++++ b/scripts/serve.js
+@@ -1,3 +1,4 @@
++import { providerConfig } from '../server/provider.js';
+ import http from 'node:http';
+ import { readFile } from 'node:fs/promises';
+ import { resolve, extname, sep } from 'node:path';
+@@ -74,6 +75,6 @@ http.createServer(async (req, res) => {
+   }
+ }).listen(Number(process.env.PORT) || 5173, '0.0.0.0', () => {
+   const port = process.env.PORT || 5173;
+-  const hasKey = Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.ANTHROPIC_API_KEY);
+-  console.log(`Transkeu.ID: http://localhost:${port} (AI: ${hasKey ? 'aktif' : 'Mode Dasar (kunci API belum diisi)'})`);
++  const hasKey = Boolean(providerConfig(process.env).apiKey);
++  console.log(`Transkeu.ID: http://localhost:${port} (AI: ${hasKey ? 'terkonfigurasi, belum diuji' : 'Mode Dasar (kunci API belum diisi)'})`);
+ });
+diff --git a/server/handler.js b/server/handler.js
+index d49145a..6816eba 100644
+--- a/server/handler.js
++++ b/server/handler.js
+@@ -1,3 +1,4 @@
++import { providerConfig } from './provider.js';
+ import { attachImpacts } from './impacts.js';
+ import { attachArticles } from './articles.js';
+ import { createHash, randomUUID } from 'node:crypto';
+@@ -16,7 +17,7 @@ export function validateInput(body) {
+     tahun_anggaran: Number.isInteger(raw.tahun_anggaran) ? raw.tahun_anggaran : undefined,
+     wilayah_kode: typeof raw.wilayah_kode === 'string' ? raw.wilayah_kode.slice(0, 40) : undefined,
+   };
+-  return { pertanyaan: body.pertanyaan.trim(), riwayat, konteks_lapangan, api_key: typeof body.api_key === 'string' ? body.api_key.trim() : undefined };
++  return { pertanyaan: body.pertanyaan.trim(), riwayat, konteks_lapangan };
+ }
+ 
+ export async function allowRequest(ip, env = process.env, fetchImpl = fetch) {
+@@ -52,6 +53,9 @@ const notes = {
+   provider_config: 'Konfigurasi model AI perlu diperiksa pengelola.',
+   grounding_failed: 'Penjelasan AI belum lolos pemeriksaan sumber.',
+   provider_incomplete: 'Penjelasan AI belum selesai diproses.',
++  provider_refusal: 'Pertanyaan ini belum dapat dijawab oleh layanan AI.',
++  limiter_not_configured: 'Batas pemakaian AI belum disiapkan oleh pengelola.',
++  limiter_unavailable: 'Layanan pembatas pemakaian AI sedang tidak tersedia.',
+ };
+ 
+ export async function handleQuestion(body, { env = process.env, ip = 'local', fetchImpl = fetch, logger = console } = {}) {
+@@ -76,38 +80,14 @@ export async function handleQuestion(body, { env = process.env, ip = 'local', fe
+     request_id,
+   });
+ 
+-  const activeEnv = { ...env };
+-  if (input.api_key) {
+-    if (input.api_key.startsWith('AIza')) {
+-      activeEnv.GEMINI_API_KEY = input.api_key;
+-    } else if (input.api_key.startsWith('sk-ant-')) {
+-      activeEnv.ANTHROPIC_API_KEY = input.api_key;
+-    } else {
+-      activeEnv.GEMINI_API_KEY = input.api_key;
+-    }
+-  }
+-
+-  const hasKey = Boolean(activeEnv.GEMINI_API_KEY || activeEnv.GOOGLE_API_KEY || activeEnv.ANTHROPIC_API_KEY);
++  const activeEnv = env;
++  const config = providerConfig(activeEnv);
++  if (!config.supported) return finish(fallback('provider_config'));
++  const hasKey = Boolean(config.apiKey);
+   if (!hasKey) return finish(fallback('missing_api_key'));
+ 
+   try {
+-    let allowed = false;
+-    try {
+-      allowed = await allowRequest(ip, activeEnv, fetchImpl);
+-    } catch (limiterErr) {
+-      if (limiterErr.message === 'limiter_not_configured') {
+-        // Fallback anggun untuk deployment Vercel prototype tanpa Upstash Redis:
+-        // gunakan in-memory counter per container agar pengguna tidak terblokir Mode Dasar
+-        const limit = Math.max(1, Math.min(1000, Number(activeEnv.BATAS_TANYA_HARIAN) || 50));
+-        const key = 'transkeu:' + createHash('sha256').update(`${activeEnv.RATE_LIMIT_SALT ?? 'local'}|${ip}|${new Date().toISOString().slice(0, 10)}`).digest('hex');
+-        const today = new Date().toISOString().slice(0, 10);
+-        const n = (counters.get(key)?.n ?? 0) + 1;
+-        counters.set(key, { day: today, n });
+-        allowed = n <= limit;
+-      } else {
+-        throw limiterErr;
+-      }
+-    }
++    const allowed = await allowRequest(ip, activeEnv, fetchImpl);
+ 
+     if (!allowed) return finish({ ...fallback('provider_limit'), rate_limited: true });
+     const evidence = retrieve(input.pertanyaan, input.riwayat);
+diff --git a/server/llm.js b/server/llm.js
+index 6a52672..c4cdf29 100644
+--- a/server/llm.js
++++ b/server/llm.js
+@@ -1,3 +1,4 @@
++import { providerConfig } from './provider.js';
+ import { SYSTEM, OUTPUT_SCHEMA } from './prompt.js';
+ import { compileAnswer, GroundingError } from './grounding.js';
+ 
+@@ -30,10 +31,11 @@ function stripAdditionalProperties(schema) {
+ }
+ 
+ export async function explain(question, history, evidence, { env = process.env, fetchImpl = fetch } = {}) {
+-  const geminiKey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
+-  const anthropicKey = env.ANTHROPIC_API_KEY;
+-
+-  if (!geminiKey && !anthropicKey) throw new ProviderError('missing_api_key');
++  const config = providerConfig(env);
++  if (!config.supported) throw new ProviderError('provider_config');
++  if (!config.apiKey) throw new ProviderError('missing_api_key');
++  const geminiKey = config.apiKey;
++  const anthropicKey = config.apiKey;
+ 
+   const payload = {
+     question,
+@@ -52,7 +54,36 @@ export async function explain(question, history, evidence, { env = process.env,
+     let rawText = '';
+     let modelName = '';
+ 
+-    if (geminiKey) {
++    if (config.provider === 'openai') {
++      modelName = config.model;
++      try {
++        response = await fetchImpl('https://api.openai.com/v1/responses', {
++          method: 'POST',
++          headers: { 'content-type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
++          signal: AbortSignal.timeout(18000),
++          body: JSON.stringify({
++            model: modelName,
++            store: false,
++            instructions: SYSTEM,
++            input: [{ role: 'user', content: JSON.stringify({ ...payload, ...(repair ? { repair_instruction: repair } : {}) }) }],
++            max_output_tokens: 2600,
++            text: { format: { type: 'json_schema', name: 'transkeu_answer', strict: true, schema: OUTPUT_SCHEMA } },
++          }),
++        });
++      } catch { throw new ProviderError('provider_unreachable'); }
++      if (!response.ok) throw new ProviderError(
++        response.status === 401 || response.status === 403 ? 'provider_auth'
++        : response.status === 429 ? 'provider_limit'
++        : response.status === 400 || response.status === 404 ? 'provider_config' : 'provider_error'
++      );
++      let result;
++      try { result = await response.json(); } catch { throw new ProviderError('provider_invalid_response'); }
++      if (result.status !== 'completed') throw new ProviderError('provider_incomplete');
++      const content = (result.output ?? []).filter(item => item.type === 'message').flatMap(item => item.content ?? []);
++      if (content.some(item => item.type === 'refusal')) throw new ProviderError('provider_refusal');
++      rawText = content.filter(item => item.type === 'output_text').map(item => item.text).join('');
++      if (!rawText) throw new ProviderError('provider_invalid_response');
++    } else if (config.provider === 'gemini') {
+       // Jalur Google Gemini
+       modelName = env.GEMINI_MODEL || 'gemini-2.5-flash';
+       const promptText = JSON.stringify({ ...payload, ...(repair ? { repair_instruction: repair } : {}) });
+diff --git a/server/provider.js b/server/provider.js
+new file mode 100644
+index 0000000..5ffcc68
+--- /dev/null
++++ b/server/provider.js
+@@ -0,0 +1,7 @@
++// Pilihan eksplisit tidak berpindah provider diam-diam bila kuncinya belum tersedia.
++export function providerConfig(env = process.env) {
++  const keys = { openai: env.OPENAI_API_KEY, gemini: env.GEMINI_API_KEY || env.GOOGLE_API_KEY, anthropic: env.ANTHROPIC_API_KEY };
++  const provider = env.LLM_PROVIDER || Object.keys(keys).find(p => keys[p]) || 'openai';
++  const models = { openai: env.OPENAI_MODEL || 'gpt-4.1-mini', gemini: env.GEMINI_MODEL || 'gemini-2.5-flash', anthropic: env.ANTHROPIC_MODEL || 'claude-sonnet-4-6' };
++  return { provider, model: models[provider], apiKey: keys[provider], supported: Object.hasOwn(keys, provider) };
++}
+diff --git a/src/app.js b/src/app.js
+index 45d1f41..4ee0190 100644
+--- a/src/app.js
++++ b/src/app.js
+@@ -161,45 +161,11 @@ function umpanBalik(pertanyaan, hasil) {
+ 
+ /* ---------- Kartu jawaban ---------- */
+ function bukaPengaturanAI() {
+-  const tersimpan = simpan.baca('transkeu.api_key', '');
+-  const input = el('input', {
+-    type: 'password',
+-    value: tersimpan,
+-    placeholder: 'Tempel kunci API Google Gemini (AIza...) atau Anthropic (sk-ant-...)',
+-    style: 'width:100%;padding:10px 12px;margin:12px 0 6px;border:1px solid var(--garis-kuat);border-radius:10px;font-family:monospace;font-size:13px;',
+-  });
+-  const statusPesan = el('p', { class: 'catatan-kecil' }, tersimpan ? 'Status: Kunci API aktif tersimpan di peramban ini.' : 'Kunci disimpan aman hanya di localStorage peramban Anda.');
+-  const tombolSimpan = el('button', {
+-    class: 'tombol tombol-utama',
+-    type: 'button',
+-    onclick: () => {
+-      const v = input.value.trim();
+-      simpan.tulis('transkeu.api_key', v);
+-      toast(v ? 'Kunci API berhasil disimpan! Tanya AI kini aktif.' : 'Kunci API dihapus. Menggunakan setelan server.');
+-      $('sheet').close();
+-    },
+-  }, 'Simpan Kunci');
+-  const tombolHapus = tersimpan ? el('button', {
+-    class: 'tombol',
+-    type: 'button',
+-    style: 'margin-left:8px',
+-    onclick: () => {
+-      simpan.tulis('transkeu.api_key', '');
+-      toast('Kunci API lokal dihapus.');
+-      $('sheet').close();
+-    },
+-  }, 'Hapus') : null;
+-
+-  bukaSheet(
+-    'Pengaturan Kunci AI',
+-    'pengaturan',
+-    el('div', { style: 'padding:8px 0' },
+-      el('p', {}, 'Aktifkan mode percakapan sehari-hari dengan memasukkan kunci API Google Gemini (gratis di aistudio.google.com) atau Anthropic Claude.'),
+-      input,
+-      el('div', { style: 'display:flex;align-items:center;margin-top:10px' }, tombolSimpan, tombolHapus),
+-      statusPesan
+-    )
+-  );
++  bukaSheet('Tentang Tanya AI', 'pengaturan', el('div', {},
++    el('p', {}, 'Tanya AI menjelaskan data anggaran dengan bahasa sehari-hari. Angka, grafik, dan rujukannya diambil dari data yang tersedia.'),
++    el('p', {}, 'Jika layanan AI belum tersedia, jawaban memakai Mode Dasar. Pengelola mengaktifkan layanan melalui konfigurasi server; kamu tidak perlu memasukkan kunci API.'),
++    el('p', {}, 'Bacaan terkait memberi konteks tambahan. Hasil dan dampak program hanya ditampilkan jika bukti yang sesuai telah tersedia.')
++  ));
+ }
+ 
+ function kepalaJawaban(hasil) {
+@@ -208,7 +174,7 @@ function kepalaJawaban(hasil) {
+     el('strong', {}, 'Transkeu'),
+     hasil.ai
+       ? el('span', { class: 'mode', title: 'AI menjelaskan; semua angka diisi program dari tabel fakta' }, 'AI · angka dari tabel fakta')
+-      : el('span', { class: 'mode dasar', style: 'cursor:pointer', onclick: bukaPengaturanAI, title: hasil.catatan_mode ? `${hasil.catatan_mode} (Ketuk untuk atur kunci API)` : 'AI sedang tidak aktif; ketuk untuk atur kunci API' }, 'Mode dasar'),
++      : el('span', { class: 'mode dasar', style: 'cursor:pointer', onclick: bukaPengaturanAI, title: hasil.catatan_mode ? `${hasil.catatan_mode} (Ketuk untuk informasi)` : 'AI sedang tidak aktif; ketuk untuk informasi' }, 'Mode dasar'),
+     !hasil.ai && hasil.catatan_mode ? el('span', { class: 'catatan-kecil' }, hasil.catatan_mode) : null);
+ }
+ 
+@@ -292,7 +258,6 @@ let sedangMenjawab = false;
+ 
+ async function tanyaServer(pertanyaan, konteks_lapangan = {}) {
+   try {
+-    const userKey = simpan.baca('transkeu.api_key', '') || undefined;
+     const r = await fetch('/api/tanya', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+@@ -300,14 +265,13 @@ async function tanyaServer(pertanyaan, konteks_lapangan = {}) {
+         pertanyaan,
+         riwayat: riwayatAI.slice(-3),
+         konteks_lapangan,
+-        api_key: userKey,
+       }),
+       signal: AbortSignal.timeout(45000),
+     });
+     if (r.status === 429) toast('Batas pertanyaan AI hari ini habis. Jawaban memakai mode dasar.');
+     if (!r.ok) return { ...jawab(pertanyaan, data), ai: false, catatan_mode: 'Layanan AI belum bisa dihubungi. Jawaban ini memakai Mode Dasar.' };
+     const result = await r.json();
+-    if (!['ok', 'istilah', 'tidak_tersedia'].includes(result?.status)) throw new Error('Respons tidak sesuai');
++    if (!['ok', 'istilah', 'klarifikasi', 'tidak_tersedia'].includes(result?.status)) throw new Error('Respons tidak sesuai');
+     return result;
+   } catch {
+     return { ...jawab(pertanyaan, data), ai: false, catatan_mode: 'Layanan AI belum bisa dihubungi. Jawaban ini memakai Mode Dasar.' };
+@@ -340,7 +304,7 @@ async function tanya(pertanyaan, konteks_lapangan = {}) {
+ 
+ function sapa() {
+   const terakhir = simpan.baca('transkeu.riwayat', []);
+-  const tersimpanKey = simpan.baca('transkeu.api_key', '');
++  try { localStorage.removeItem('transkeu.api_key'); } catch { /* penyimpanan opsional */ }
+   return el('div', { class: 'sapa', id: 'sapa' },
+     el('img', { class: 'avatar-besar logo-avatar', src: 'assets/logo.jpg', alt: 'Logo Transkeu.ID' }),
+     el('h2', {}, 'Halo, aku Transkeu'),
+@@ -351,7 +315,7 @@ function sapa() {
+         class: 'chip',
+         style: 'border-color:var(--biru-500);background:var(--biru-50);color:var(--biru-900);font-weight:700',
+         onclick: bukaPengaturanAI,
+-      }, tersimpanKey ? '✨ AI Aktif (Kunci tersimpan)' : '⚙️ Aktifkan AI (Masukkan Kunci Gemini/Claude)')
++      }, 'Tentang Tanya AI')
+     ),
+     el('div', { class: 'saran' }, contohAwal.map((q) => el('button', { type: 'button', onclick: () => tanya(q) }, q))),
+     terakhir.length ? el('div', { style: 'margin-top:20px' }, el('div', { class: 'judul-kecil', style: 'justify-content:center' }, 'Pertanyaanmu sebelumnya'),
+diff --git a/tests/llm.test.js b/tests/llm.test.js
+index 6a51dc3..b481cf3 100644
+--- a/tests/llm.test.js
++++ b/tests/llm.test.js
+@@ -93,3 +93,35 @@ test('endpoint JSON rusak mengembalikan 400',async()=>{
+ });
+ 
+ test('tahun yang tidak punya data pendidikan tidak diganti angka pajak',()=>assert.equal(retrieve('Duit buat sekolah tahun 2025 berapa?').facts.length,0));
++
++const openaiResponse = (p=plan()) => ({ok:true,json:async()=>({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(p)}]}]})});
++test('OpenAI Responses memakai kontrak grafik dan sumber yang sama',async()=>{
++ let sent;
++ const result=await explain('Duit sekolah berapa?',[],evidence,{env:{OPENAI_API_KEY:'test-only'},fetchImpl:async(url,options)=>{
++  assert.equal(url,'https://api.openai.com/v1/responses');assert.equal(options.headers.Authorization,'Bearer test-only');sent=JSON.parse(options.body);return openaiResponse();
++ }});
++ assert.equal(sent.store,false);assert.equal(sent.text.format.strict,true);assert.equal(sent.text.format.type,'json_schema');assert.ok(sent.instructions.includes('bahasa sehari-hari'));assert.ok(result.ai);assert.equal(result.visual.items.length,2);assert.equal(result.sumber.length,2);
++});
++test('OpenAI dapat memperbaiki angka yang ditolak pemeriksaan sumber',async()=>{
++ let calls=0;
++ const result=await explain('Anggaran?',[],evidence,{env:{OPENAI_API_KEY:'test-only'},fetchImpl:async()=>{calls++;const p=plan();if(calls===1)p.paragraf[0].teks='Rp999 triliun';return openaiResponse(p);}});
++ assert.equal(calls,2);assert.ok(result.ai);
++});
++test('OpenAI tidak meneruskan jawaban terpotong atau penolakan',async()=>{
++ for(const result of [{status:'incomplete',output:[]},{status:'completed',output:[{type:'message',content:[{type:'refusal',refusal:'private'}]}]}]) {
++  await assert.rejects(explain('Anggaran?',[],evidence,{env:{OPENAI_API_KEY:'test-only'},fetchImpl:async()=>({ok:true,json:async()=>result})}),/provider_incomplete|provider_refusal/);
++ }
++});
++test('provider eksplisit tidak mengambil kunci provider lain',async()=>{
++ await assert.rejects(explain('Anggaran?',[],evidence,{env:{LLM_PROVIDER:'openai',GEMINI_API_KEY:'test-only'},fetchImpl:async()=>{throw new Error('tidak boleh dipanggil');}}),/missing_api_key/);
++});
++test('kunci dari browser diabaikan, aktivasi hanya dari server',async()=>{
++ const result=await handleQuestion({pertanyaan:'Anggaran pendidikan?',api_key:'sk-test-browser'},{env:{},logger:quiet});assert.equal(result.body.ai,false);assert.equal(validateInput({pertanyaan:'Pajak?',api_key:'sk-test'}).api_key,undefined);
++});
++test('OpenAI terhubung sampai handler dan limiter produksi',async()=>{
++ const r=await handleQuestion({pertanyaan:'Anggaran pendidikan 2026 berapa?'},{env:{LLM_PROVIDER:'openai',OPENAI_API_KEY:'test-only',VERCEL:'1',UPSTASH_REDIS_REST_URL:'https://redis.example',UPSTASH_REDIS_REST_TOKEN:'test-only'},logger:quiet,fetchImpl:async(url)=>url==='https://redis.example'?{ok:true,json:async()=>({result:1})}:openaiResponse()});
++ assert.equal(r.code,200);assert.equal(r.body.ai,true);assert.ok(r.body.sumber.length);
++});
++test('handler tidak membuka AI berbayar tanpa limiter produksi',async()=>{
++ const r=await handleQuestion({pertanyaan:'Pajak?'},{env:{OPENAI_API_KEY:'test-only',VERCEL:'1'},logger:quiet,fetchImpl:async()=>{throw new Error('provider tidak boleh dipanggil');}});assert.equal(r.body.ai,false);assert.match(r.body.catatan_mode,/Batas pemakaian/);
++});
