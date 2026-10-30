@@ -93,3 +93,35 @@ test('endpoint JSON rusak mengembalikan 400',async()=>{
 });
 
 test('tahun yang tidak punya data pendidikan tidak diganti angka pajak',()=>assert.equal(retrieve('Duit buat sekolah tahun 2025 berapa?').facts.length,0));
+
+const openaiResponse = (p=plan()) => ({ok:true,json:async()=>({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(p)}]}]})});
+test('OpenAI Responses memakai kontrak grafik dan sumber yang sama',async()=>{
+ let sent;
+ const result=await explain('Duit sekolah berapa?',[],evidence,{env:{OPENAI_API_KEY:'test-only'},fetchImpl:async(url,options)=>{
+  assert.equal(url,'https://api.openai.com/v1/responses');assert.equal(options.headers.Authorization,'Bearer test-only');sent=JSON.parse(options.body);return openaiResponse();
+ }});
+ assert.equal(sent.store,false);assert.equal(sent.text.format.strict,true);assert.equal(sent.text.format.type,'json_schema');assert.ok(sent.instructions.includes('bahasa sehari-hari'));assert.ok(result.ai);assert.equal(result.visual.items.length,2);assert.equal(result.sumber.length,2);
+});
+test('OpenAI dapat memperbaiki angka yang ditolak pemeriksaan sumber',async()=>{
+ let calls=0;
+ const result=await explain('Anggaran?',[],evidence,{env:{OPENAI_API_KEY:'test-only'},fetchImpl:async()=>{calls++;const p=plan();if(calls===1)p.paragraf[0].teks='Rp999 triliun';return openaiResponse(p);}});
+ assert.equal(calls,2);assert.ok(result.ai);
+});
+test('OpenAI tidak meneruskan jawaban terpotong atau penolakan',async()=>{
+ for(const result of [{status:'incomplete',output:[]},{status:'completed',output:[{type:'message',content:[{type:'refusal',refusal:'private'}]}]}]) {
+  await assert.rejects(explain('Anggaran?',[],evidence,{env:{OPENAI_API_KEY:'test-only'},fetchImpl:async()=>({ok:true,json:async()=>result})}),/provider_incomplete|provider_refusal/);
+ }
+});
+test('provider eksplisit tidak mengambil kunci provider lain',async()=>{
+ await assert.rejects(explain('Anggaran?',[],evidence,{env:{LLM_PROVIDER:'openai',GEMINI_API_KEY:'test-only'},fetchImpl:async()=>{throw new Error('tidak boleh dipanggil');}}),/missing_api_key/);
+});
+test('kunci dari browser diabaikan, aktivasi hanya dari server',async()=>{
+ const result=await handleQuestion({pertanyaan:'Anggaran pendidikan?',api_key:'sk-test-browser'},{env:{},logger:quiet});assert.equal(result.body.ai,false);assert.equal(validateInput({pertanyaan:'Pajak?',api_key:'sk-test'}).api_key,undefined);
+});
+test('OpenAI terhubung sampai handler dan limiter produksi',async()=>{
+ const r=await handleQuestion({pertanyaan:'Anggaran pendidikan 2026 berapa?'},{env:{LLM_PROVIDER:'openai',OPENAI_API_KEY:'test-only',VERCEL:'1',UPSTASH_REDIS_REST_URL:'https://redis.example',UPSTASH_REDIS_REST_TOKEN:'test-only'},logger:quiet,fetchImpl:async(url)=>url==='https://redis.example'?{ok:true,json:async()=>({result:1})}:openaiResponse()});
+ assert.equal(r.code,200);assert.equal(r.body.ai,true);assert.ok(r.body.sumber.length);
+});
+test('handler tidak membuka AI berbayar tanpa limiter produksi',async()=>{
+ const r=await handleQuestion({pertanyaan:'Pajak?'},{env:{OPENAI_API_KEY:'test-only',VERCEL:'1'},logger:quiet,fetchImpl:async()=>{throw new Error('provider tidak boleh dipanggil');}});assert.equal(r.body.ai,false);assert.match(r.body.catatan_mode,/Batas pemakaian/);
+});

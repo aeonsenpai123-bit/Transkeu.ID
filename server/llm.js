@@ -1,3 +1,4 @@
+import { providerConfig } from './provider.js';
 import { SYSTEM, OUTPUT_SCHEMA } from './prompt.js';
 import { compileAnswer, GroundingError } from './grounding.js';
 
@@ -30,10 +31,11 @@ function stripAdditionalProperties(schema) {
 }
 
 export async function explain(question, history, evidence, { env = process.env, fetchImpl = fetch } = {}) {
-  const geminiKey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
-  const anthropicKey = env.ANTHROPIC_API_KEY;
-
-  if (!geminiKey && !anthropicKey) throw new ProviderError('missing_api_key');
+  const config = providerConfig(env);
+  if (!config.supported) throw new ProviderError('provider_config');
+  if (!config.apiKey) throw new ProviderError('missing_api_key');
+  const geminiKey = config.apiKey;
+  const anthropicKey = config.apiKey;
 
   const payload = {
     question,
@@ -52,7 +54,36 @@ export async function explain(question, history, evidence, { env = process.env, 
     let rawText = '';
     let modelName = '';
 
-    if (geminiKey) {
+    if (config.provider === 'openai') {
+      modelName = config.model;
+      try {
+        response = await fetchImpl('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
+          signal: AbortSignal.timeout(18000),
+          body: JSON.stringify({
+            model: modelName,
+            store: false,
+            instructions: SYSTEM,
+            input: [{ role: 'user', content: JSON.stringify({ ...payload, ...(repair ? { repair_instruction: repair } : {}) }) }],
+            max_output_tokens: 2600,
+            text: { format: { type: 'json_schema', name: 'transkeu_answer', strict: true, schema: OUTPUT_SCHEMA } },
+          }),
+        });
+      } catch { throw new ProviderError('provider_unreachable'); }
+      if (!response.ok) throw new ProviderError(
+        response.status === 401 || response.status === 403 ? 'provider_auth'
+        : response.status === 429 ? 'provider_limit'
+        : response.status === 400 || response.status === 404 ? 'provider_config' : 'provider_error'
+      );
+      let result;
+      try { result = await response.json(); } catch { throw new ProviderError('provider_invalid_response'); }
+      if (result.status !== 'completed') throw new ProviderError('provider_incomplete');
+      const content = (result.output ?? []).filter(item => item.type === 'message').flatMap(item => item.content ?? []);
+      if (content.some(item => item.type === 'refusal')) throw new ProviderError('provider_refusal');
+      rawText = content.filter(item => item.type === 'output_text').map(item => item.text).join('');
+      if (!rawText) throw new ProviderError('provider_invalid_response');
+    } else if (config.provider === 'gemini') {
       // Jalur Google Gemini
       modelName = env.GEMINI_MODEL || 'gemini-2.5-flash';
       const promptText = JSON.stringify({ ...payload, ...(repair ? { repair_instruction: repair } : {}) });

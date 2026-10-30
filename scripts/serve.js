@@ -1,3 +1,4 @@
+import { providerConfig } from '../server/provider.js';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
@@ -74,6 +75,6 @@ http.createServer(async (req, res) => {
   }
 }).listen(Number(process.env.PORT) || 5173, '0.0.0.0', () => {
   const port = process.env.PORT || 5173;
-  const hasKey = Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.ANTHROPIC_API_KEY);
-  console.log(`Transkeu.ID: http://localhost:${port} (AI: ${hasKey ? 'aktif' : 'Mode Dasar (kunci API belum diisi)'})`);
+  const hasKey = Boolean(providerConfig(process.env).apiKey);
+  console.log(`Transkeu.ID: http://localhost:${port} (AI: ${hasKey ? 'terkonfigurasi, belum diuji' : 'Mode Dasar (kunci API belum diisi)'})`);
 });
