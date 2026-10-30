@@ -20,9 +20,9 @@ Butuh Node.js 22 atau lebih baru. Tanpa langkah build rumit.
 
 ```powershell
 npm install
-copy .env.example .env   # lalu isi GEMINI_API_KEY atau ANTHROPIC_API_KEY di .env
+copy .env.example .env   # isi OPENAI_API_KEY; LLM_PROVIDER=openai
 npm start                # buka http://localhost:5173
-npm test                 # menjalankan 99 tes unit otomatis
+npm test                 # menjalankan tes unit, kontrak provider, dan DOM
 npm run audit:data       # audit metadata korpus fakta
 ```
 
@@ -40,13 +40,15 @@ Agar Tanya AI aktif di Vercel:
 1. Buka dashboard proyek Anda di [vercel.com](https://vercel.com).
 2. Pilih proyek **transkeu-id** -> Masuk ke tab **Settings** -> **Environment Variables**.
 3. Tambahkan variabel berikut:
-   - `GEMINI_API_KEY`: Kunci API Google Gemini (dapat dibuat gratis di [Google AI Studio](https://aistudio.google.com/)).
-   - `GEMINI_MODEL` *(Opsional)*: `gemini-2.5-flash` (bawaan) atau `gemini-1.5-flash`.
-   - Atau `ANTHROPIC_API_KEY`: Kunci API Claude dari Anthropic Console.
-   - `BATAS_TANYA_HARIAN` *(Opsional)*: Batas pertanyaan AI per IP per hari (bawaan: `50`).
-   - `UPSTASH_REDIS_REST_URL` & `UPSTASH_REDIS_REST_TOKEN` *(Opsional)*: Rate limiting terpusat lintas instance serverless Vercel.
+   - `LLM_PROVIDER`: `openai`.
+   - `OPENAI_API_KEY`: kunci API dari akun OpenAI milik pengelola, hanya di server.
+   - `OPENAI_MODEL`: `gpt-4.1-mini` (dapat disesuaikan dengan model yang tersedia pada akun).
+   - `BATAS_TANYA_HARIAN`: `50` untuk batas harian per IP.
+   - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, dan `RATE_LIMIT_SALT`: wajib untuk pembatas pemakaian lintas instance produksi. Buat salt acak yang tidak dipublikasikan.
+   - `DATABASE_URL`: opsional untuk katalog PostgreSQL; tanpa ini aplikasi memakai katalog lokal.
+   - Provider lama tetap tersedia: gunakan `LLM_PROVIDER=gemini` atau `anthropic` dan kunci server yang sesuai.
 4. Lakukan **Redeploy** (atau *git push*) agar variabel lingkungan mulai berlaku.
-5. Cek endpoint `https://transkeu-id.vercel.app/api/health` untuk memastikan konfigurasi terdeteksi dengan status `configured: true`.
+5. Cek endpoint `https://transkeu-id.vercel.app/api/health` untuk memastikan konfigurasi terdeteksi dengan status `configured: true`. Status ini belum membuktikan panggilan model berhasil; uji pertanyaan sampai respons berisi `ai: true`.
 
 | Path | Isi |
 | --- | --- |
@@ -55,7 +57,7 @@ Agar Tanya AI aktif di Vercel:
 | `server/retrieval.js` | Retrieval leksikal eviden APBN, perluasan sinonim sehari-hari, dan konteks pertanyaan lanjutan |
 | `server/prompt.js` | Instruksi sistem pemandu literasi fiskal dan JSON Schema terstruktur |
 | `server/grounding.js` | Validator grounding: pencegahan halusinasi angka, kalkulasi persen, dan validasi visual |
-| `server/llm.js` | Integrasi LLM (Google Gemini & Anthropic Claude) dengan self-repair loop |
+| `server/llm.js` | Integrasi LLM (OpenAI, Google Gemini & Anthropic Claude) dengan self-repair loop |
 | `server/handler.js` | Handler pertanyaan, rate limiting terdistribusi, dan fallback Mode Dasar transparan |
 | `api/tanya.js`, `api/health.js` | Vercel Serverless Function endpoints |
 | `src/ai.js` | Integrasi Google Gemini (`@google/genai`) dengan persona pemandu literasi fiskal |
@@ -112,3 +114,9 @@ Umpan balik dan skor kuis disimpan di perangkat pengguna (localStorage). Tim men
 | `.claude/skills/ponytail/` | Skill kode minimal (MIT, adaptasi DietrichGebert/ponytail) |
 | `plugins/` | Salinan lokal plugin mattpocock-skills (MIT) dan ui-ux-pro-max (MIT) |
 | `.mcp.json` | Server MCP 21st.dev |
+
+## Integrasi OpenAI dan keterbatasan
+
+Lihat [panduan aktivasi](docs/AKTIVASI-OPENAI.md). Endpoint aktif memakai `server/llm.js`; modul `src/ai.js` adalah jalur lama yang tetap dipertahankan untuk kompatibilitas tes. Pengunjung tidak perlu memasukkan kunci API. Kunci yang dahulu disimpan pada peramban dihapus saat layar sambutan dimuat.
+
+Artikel Melek APBN merupakan bacaan pendamping, bukan sumber angka resmi. Katalog `data/bukti-lapangan.js` masih kosong: sistem menyatakan bukti belum tersedia, bukan menyimpulkan program tidak berdampak. Retrieval saat ini berbasis kata kunci dari korpus yang dikurasi, belum pencarian seluruh dokumen pemerintah atau sinkronisasi berita otomatis.

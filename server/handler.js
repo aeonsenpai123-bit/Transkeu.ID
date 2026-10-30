@@ -1,3 +1,4 @@
+import { providerConfig } from './provider.js';
 import { attachImpacts } from './impacts.js';
 import { attachArticles } from './articles.js';
 import { createHash, randomUUID } from 'node:crypto';
@@ -16,7 +17,7 @@ export function validateInput(body) {
     tahun_anggaran: Number.isInteger(raw.tahun_anggaran) ? raw.tahun_anggaran : undefined,
     wilayah_kode: typeof raw.wilayah_kode === 'string' ? raw.wilayah_kode.slice(0, 40) : undefined,
   };
-  return { pertanyaan: body.pertanyaan.trim(), riwayat, konteks_lapangan, api_key: typeof body.api_key === 'string' ? body.api_key.trim() : undefined };
+  return { pertanyaan: body.pertanyaan.trim(), riwayat, konteks_lapangan };
 }
 
 export async function allowRequest(ip, env = process.env, fetchImpl = fetch) {
@@ -52,6 +53,9 @@ const notes = {
   provider_config: 'Konfigurasi model AI perlu diperiksa pengelola.',
   grounding_failed: 'Penjelasan AI belum lolos pemeriksaan sumber.',
   provider_incomplete: 'Penjelasan AI belum selesai diproses.',
+  provider_refusal: 'Pertanyaan ini belum dapat dijawab oleh layanan AI.',
+  limiter_not_configured: 'Batas pemakaian AI belum disiapkan oleh pengelola.',
+  limiter_unavailable: 'Layanan pembatas pemakaian AI sedang tidak tersedia.',
 };
 
 export async function handleQuestion(body, { env = process.env, ip = 'local', fetchImpl = fetch, logger = console } = {}) {
@@ -76,38 +80,14 @@ export async function handleQuestion(body, { env = process.env, ip = 'local', fe
     request_id,
   });
 
-  const activeEnv = { ...env };
-  if (input.api_key) {
-    if (input.api_key.startsWith('AIza')) {
-      activeEnv.GEMINI_API_KEY = input.api_key;
-    } else if (input.api_key.startsWith('sk-ant-')) {
-      activeEnv.ANTHROPIC_API_KEY = input.api_key;
-    } else {
-      activeEnv.GEMINI_API_KEY = input.api_key;
-    }
-  }
-
-  const hasKey = Boolean(activeEnv.GEMINI_API_KEY || activeEnv.GOOGLE_API_KEY || activeEnv.ANTHROPIC_API_KEY);
+  const activeEnv = env;
+  const config = providerConfig(activeEnv);
+  if (!config.supported) return finish(fallback('provider_config'));
+  const hasKey = Boolean(config.apiKey);
   if (!hasKey) return finish(fallback('missing_api_key'));
 
   try {
-    let allowed = false;
-    try {
-      allowed = await allowRequest(ip, activeEnv, fetchImpl);
-    } catch (limiterErr) {
-      if (limiterErr.message === 'limiter_not_configured') {
-        // Fallback anggun untuk deployment Vercel prototype tanpa Upstash Redis:
-        // gunakan in-memory counter per container agar pengguna tidak terblokir Mode Dasar
-        const limit = Math.max(1, Math.min(1000, Number(activeEnv.BATAS_TANYA_HARIAN) || 50));
-        const key = 'transkeu:' + createHash('sha256').update(`${activeEnv.RATE_LIMIT_SALT ?? 'local'}|${ip}|${new Date().toISOString().slice(0, 10)}`).digest('hex');
-        const today = new Date().toISOString().slice(0, 10);
-        const n = (counters.get(key)?.n ?? 0) + 1;
-        counters.set(key, { day: today, n });
-        allowed = n <= limit;
-      } else {
-        throw limiterErr;
-      }
-    }
+    const allowed = await allowRequest(ip, activeEnv, fetchImpl);
 
     if (!allowed) return finish({ ...fallback('provider_limit'), rate_limited: true });
     const evidence = retrieve(input.pertanyaan, input.riwayat);
