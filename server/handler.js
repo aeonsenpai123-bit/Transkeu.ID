@@ -31,9 +31,9 @@ export async function allowRequest(ip, env = process.env, fetchImpl = fetch) {
       body: JSON.stringify(['EVAL', script, '1', key]),
       signal: AbortSignal.timeout(3000),
     });
-    if (!r.ok) throw new Error('limiter_unavailable');
+    if (!r.ok) { const e = new Error('limiter_unavailable'); e.code = r.status === 401 ? 'limiter_auth' : r.status === 403 ? 'limiter_permission' : r.status === 429 ? 'limiter_quota' : 'limiter_http_' + r.status; throw e; }
     const data = await r.json();
-    if (data.error || !Number.isInteger(data.result)) throw new Error('limiter_unavailable');
+    if (data.error || !Number.isInteger(data.result)) { const e = new Error('limiter_unavailable'); const message = String(data.error ?? ''); e.code = /NOPERM|READONLY|read.only|not allowed/i.test(message) ? 'limiter_permission' : /quota|limit.exceeded/i.test(message) ? 'limiter_quota' : data.error ? 'limiter_command_rejected' : 'limiter_invalid_response'; throw e; }
     return data.result <= limit;
   }
   // Memori bukan batas lintas-instance: hanya untuk pengembangan lokal.
@@ -56,6 +56,11 @@ const notes = {
   provider_refusal: 'Pertanyaan ini belum dapat dijawab oleh layanan AI.',
   limiter_not_configured: 'Batas pemakaian AI belum disiapkan oleh pengelola.',
   limiter_unavailable: 'Layanan pembatas pemakaian AI sedang tidak tersedia.',
+  limiter_auth: 'Token Upstash ditolak. Pengelola perlu memeriksa token REST.',
+  limiter_permission: 'Izin perintah Upstash ditolak. Pengelola perlu memeriksa token tulis.',
+  limiter_quota: 'Batas layanan Upstash tercapai.',
+  limiter_command_rejected: 'Upstash menolak perintah pembatas pemakaian.',
+  limiter_invalid_response: 'Respons Upstash tidak sesuai format pembatas pemakaian.',
 };
 
 export async function handleQuestion(body, { env = process.env, ip = 'local', fetchImpl = fetch, logger = console } = {}) {
