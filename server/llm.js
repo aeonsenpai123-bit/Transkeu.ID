@@ -113,15 +113,20 @@ export async function explain(question, history, evidence, { env = process.env, 
       }
 
       if (!response.ok) {
-        throw new ProviderError(
-          response.status === 401 || response.status === 403
-            ? 'provider_auth'
-            : response.status === 429
-            ? 'provider_limit'
-            : response.status === 400 || response.status === 404
-            ? 'provider_config'
-            : 'provider_error'
-        );
+        // Classify locally; never log or return the provider body or API key.
+        let error = {};
+        try { error = (await response.json()).error ?? {}; } catch {}
+        const reasons = Array.isArray(error.details) ? error.details.map(d => d?.reason) : [];
+        const message = typeof error.message === 'string' ? error.message : '';
+        const code = reasons.includes('API_KEY_INVALID') || /API key not valid/i.test(message)
+          ? 'gemini_key_invalid'
+          : response.status === 401 || response.status === 403 ? 'provider_auth'
+          : response.status === 429 ? 'provider_limit'
+          : error.status === 'FAILED_PRECONDITION' ? 'gemini_precondition'
+          : response.status === 404 ? 'gemini_model_not_found'
+          : response.status === 400 ? 'gemini_invalid_request'
+          : 'provider_error';
+        throw new ProviderError(code);
       }
 
       let result;
