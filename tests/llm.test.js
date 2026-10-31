@@ -125,3 +125,18 @@ test('OpenAI terhubung sampai handler dan limiter produksi',async()=>{
 test('handler tidak membuka AI berbayar tanpa limiter produksi',async()=>{
  const r=await handleQuestion({pertanyaan:'Pajak?'},{env:{OPENAI_API_KEY:'test-only',VERCEL:'1'},logger:quiet,fetchImpl:async()=>{throw new Error('provider tidak boleh dipanggil');}});assert.equal(r.body.ai,false);assert.match(r.body.catatan_mode,/Batas pemakaian/);
 });
+
+for (const [status, error, expected] of [
+  [400, {status:'INVALID_ARGUMENT',details:[{reason:'API_KEY_INVALID'}]}, 'gemini_key_invalid'],
+  [400, {status:'FAILED_PRECONDITION'}, 'gemini_precondition'],
+  [404, {status:'NOT_FOUND'}, 'gemini_model_not_found'],
+  [400, {status:'INVALID_ARGUMENT'}, 'gemini_invalid_request'],
+  [429, {status:'RESOURCE_EXHAUSTED'}, 'provider_limit'],
+]) {
+  test(`Gemini diagnosis ${expected} does not expose provider secrets`, async()=>{
+    await assert.rejects(explain('Pendidikan?',[],evidence,{
+      env:{GEMINI_API_KEY:'secret-key'},
+      fetchImpl:async()=>({ok:false,status,json:async()=>({error:{...error,message:'private-provider-message'}})})
+    }), e=>e.code===expected && !e.message.includes('private-provider-message') && !e.message.includes('secret-key'));
+  });
+}
