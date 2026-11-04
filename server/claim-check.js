@@ -1,0 +1,6 @@
+// Relevansi berita bukan validasi kebenaran atau identifikasi dampak kausal.
+export function attachClaimCheck(result,question) {
+ if(!/dampak|manfaat|benar|validasi|hoaks|hoax|bukti|negatif|positif|berita|kajian/i.test(question))return result;
+ const readings=result.bacaan_terkait??[],field=result.hasil_lapangan;
+ return {...result,pemeriksaan_klaim:{status:'belum_disimpulkan',judul:'Cara memeriksa klaim dan dampak',pesan:'Bacaan yang sesuai topik belum membuktikan bahwa klaim benar atau bahwa APBN menyebabkan perubahan tersebut.',sumber_anggaran:(result.sumber??[]).filter(s=>s.jenis==='dokumen').map(s=>s.id),bacaan_ids:readings.map(a=>a.id),bukti_lapangan:field?.status??'belum_tersedia',langkah:['Cocokkan program, tahun, wilayah, dan sumber pendanaannya; jangan menyamakan APBN dengan dana BUMN atau pembiayaan swasta.','Bedakan anggaran, realisasi, jumlah penerima, dan perubahan kondisi masyarakat. Penyerapan dana bukan ukuran keberhasilan dampak.','Periksa sumber primer yang dirujuk kajian: laporan program, audit, statistik, atau evaluasi dengan metode yang dijelaskan.','Pertimbangkan manfaat, risiko, kelompok yang diuntungkan atau dirugikan, serta batasan temuannya sebelum menyimpulkan.']}};
+}

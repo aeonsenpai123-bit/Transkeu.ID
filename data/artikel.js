@@ -1,26 +1,22 @@
-// Metadata sumber sekunder. Tidak dimasukkan ke tabel fakta atau perhitungan grafik.
-// Tautan dan metadata diperiksa melalui katalog/halaman publik Melek APBN pada 28 Oktober 2026.
-export const artikel = [
-  {
-    id:'melek-jalan-tol',judul:'Mempelajari Dampak Pembangunan Jalan Tol dari Radiator Springs',
-    url:'https://melekapbn.org/articles/mempelajari-dampak-pembangunan-jalan-tol-dari-radiator-springs',
-    penulis:['Jodhie Marshal Pambudi Sinaga','Fari Abiyyu Santoso'],tanggal_terbit:'2026-09-25',
-    penerbit:'Melek APBN',jenis:'analisis',topik:['infrastruktur'],kata_kunci:['jalan','tol','dampak pembangunan','infrastruktur'],tahun_anggaran:[],
-    ringkasan:'Analisis tentang hubungan pembangunan jalan tol dan kegiatan ekonomi masyarakat sekitar.',
-    status:'published',ditinjau_pada:'2026-10-28',cakupan_tinjauan:'metadata_dan_ringkasan',
-  },
-  {
-    id:'melek-efisiensi-energi',judul:'Apakah Kebijakan Energi Selalu Mampu Menjadi Kunci Efisiensi?',
-    url:'https://melekapbn.org/carousel/apakah-kebijakan-energi-selalu-mampu-menjadi-kunci-efisiensi',
-    penulis:[],tanggal_terbit:null,penerbit:'Melek APBN',jenis:'carousel',topik:['subsidi_energi'],kata_kunci:['energi','subsidi','bbm','listrik','efisiensi','rebound effect'],tahun_anggaran:[],
-    ringkasan:'Bacaan visual mengenai kebijakan energi dan kaitannya dengan efisiensi penggunaan energi.',
-    status:'published',ditinjau_pada:'2026-10-28',cakupan_tinjauan:'metadata_katalog',
-  },
-  {
-    id:'melek-tax-ratio',judul:'Tax Ratio: Penyakit Kronis Perpajakan Indonesia & Mengapa Anda Harus Peduli',
-    url:'https://melekapbn.org/carousel/tax-ratio-penyakit-kronis-perpajakan-indonesia-mengapa-anda-harus-peduli',
-    penulis:[],tanggal_terbit:null,penerbit:'Melek APBN',jenis:'carousel',topik:['pajak'],kata_kunci:['tax ratio','pajak','perpajakan','penerimaan pajak'],tahun_anggaran:[],
-    ringkasan:'Bacaan visual untuk mengenal tax ratio dan relevansinya bagi pembahasan perpajakan.',
-    status:'published',ditinjau_pada:'2026-10-28',cakupan_tinjauan:'metadata_katalog',
-  },
-];
+import catalog from './melek-apbn.json' with {type:'json'};
+// Ringkasan ditulis Transkeu.ID; bukan salinan isi kajian atau bukti kausal.
+const notes={
+ 'eb5ee80d-4db0-43cf-a646-6c0d61e03272':{topik:['pembiayaan','energi'],kata_kunci:['patriot bond','danantara','obligasi','utang','pembiayaan','energi terbarukan'],tahun_anggaran:[2025,2026],ringkasan:'Membahas Patriot Bond sebagai pembiayaan investasi, peluang pendanaan energi bersih, serta persoalan tata kelola. Pembiayaan Danantara perlu dibedakan dari belanja langsung APBN.'},
+ 'e5553b92-2a8b-4a68-a391-824fdabf6bcf':{topik:['belanja','mbg'],kata_kunci:['pertumbuhan','belanja','tekanan fiskal','mbg','makan bergizi gratis','ruang fiskal'],tahun_anggaran:[2026,2027],ringkasan:'Mengkaji hubungan belanja prioritas dengan pertumbuhan: peluang pengembangan manusia dan kegiatan pemasok, serta risiko tekanan fiskal. Proyeksi manfaat perlu dibedakan dari hasil yang sudah terukur.'},
+ '5930864d-2aed-4f8e-aedf-a4a29e6a543a':{topik:['lingkungan','bencana'],kata_kunci:['karhutla','kebakaran','asap','gambut','bnpb','bencana','pencegahan','lingkungan'],tahun_anggaran:[2026],ringkasan:'Membahas pilihan antara pencegahan kebakaran lahan dan penanganan darurat, termasuk risiko biaya ekonomi serta kesehatan. Hubungan perubahan anggaran dengan kerugian perlu diperiksa melalui sumber primer.'},
+ '52f2d673-23c4-4265-a1e3-211375cbfd37':{id:'melek-jalan-tol',topik:['infrastruktur'],kata_kunci:['jalan','tol','dampak pembangunan','infrastruktur','trans jawa','trans sumatera'],tahun_anggaran:[],ringkasan:'Membahas potensi konektivitas jalan tol dan risiko perpindahan aktivitas ekonomi dari wilayah yang dilewati. Kajian menyoroti manfaat yang tidak otomatis merata; hasil studi lokasi tertentu tidak mewakili seluruh proyek tol.'},
+ 'a89c03bd-a428-4f74-9a05-f169a47963e3':{topik:['pajak'],kata_kunci:['ekonomi bayangan','shadow economy','umkm','sektor informal','ekstensifikasi','kepatuhan pajak'],tahun_anggaran:[2026,2027],ringkasan:'Mengkaji perluasan basis pajak ke ekonomi informal, peluang penerimaan, serta risiko beban administrasi bagi usaha kecil. Kasus penghindaran yang ditemukan tidak otomatis mewakili semua UMKM.'},
+ '9b6962ba-509d-4d71-9060-7c209b946ce0':{id:'melek-efisiensi-energi',topik:['subsidi_energi'],kata_kunci:['energi','subsidi','bbm','listrik','efisiensi','rebound effect'],tahun_anggaran:[],ringkasan:'Mengenalkan risiko rebound effect: peningkatan efisiensi belum tentu menurunkan pemakaian energi secara keseluruhan. Periksa desain subsidi dan bukti konsumsi sebelum menyimpulkan hasil kebijakan.'},
+ 'a5fa37ed-d7ce-46f1-9a95-4552b759cf2b':{id:'melek-tax-ratio',topik:['pajak'],kata_kunci:['tax ratio','pajak','perpajakan','penerimaan pajak'],tahun_anggaran:[],ringkasan:'Mengenalkan tax ratio dan kaitannya dengan kapasitas penerimaan negara. Bacaan konsep ini tidak menjadi bukti perubahan kepatuhan akibat satu program.'},
+ '0fc81d96-ea04-4858-a586-fb1c37c5e32c':{topik:['kebijakan_fiskal'],kata_kunci:['purbaya','optimisme','ekonomi','strategi fiskal'],tahun_anggaran:[],ringkasan:'Bacaan visual tentang optimisme kebijakan ekonomi dan pertanyaan mengenai kesesuaiannya dengan kondisi perekonomian.'},
+ '0d71d45c-14c7-43e7-a96b-a2d933260abc':{topik:['demografi'],kata_kunci:['bonus demografi','penduduk','tenaga kerja','usia produktif'],tahun_anggaran:[],ringkasan:'Bacaan visual mengenai peluang dan tantangan pemanfaatan bonus demografi. Tema demografi tidak otomatis membuktikan dampak satu alokasi APBN.'},
+ '90f0693d-f995-4de8-a3d8-a886a2390e84':{topik:['pajak','industri'],kata_kunci:['nikel','hilirisasi','insentif pajak','baterai','industri'],tahun_anggaran:[],ringkasan:'Membahas peluang hilirisasi nikel dan risiko penerimaan yang berkaitan dengan insentif, harga komoditas, serta perubahan teknologi. Kaitan pendanaan dan hasilnya perlu diperiksa per kebijakan.'},
+ '15d944a4-be32-4c09-b223-3202e4eda12c':{topik:['kebijakan_fiskal'],kata_kunci:['populisme','aturan fiskal','defisit','janji politik','disiplin fiskal'],tahun_anggaran:[],ringkasan:'Bacaan visual mengenai fungsi aturan fiskal dalam membatasi risiko pembiayaan janji kebijakan dan menjaga keberlanjutan anggaran.'},
+ '2e310f3d-3c71-4e23-b2f7-3132cd286d44':{topik:['transfer_daerah'],kata_kunci:['dana desa','desa','transfer ke daerah','tkd'],tahun_anggaran:[2026],ringkasan:'Membahas tekanan terhadap Dana Desa. Perubahan alokasi perlu dibandingkan pada tahun dan jenis angka yang sama sebelum dikaitkan dengan layanan di desa.'},
+ 'b51e2a7a-ebea-4844-9070-4ff7f86c4729':{topik:['pajak'],kata_kunci:['lapor pajak','spt','pelaporan pajak','wajib pajak'],tahun_anggaran:[],ringkasan:'Bacaan visual mengenai alasan pelaporan pajak dan perannya dalam administrasi perpajakan.'},
+};
+export const artikel=catalog.items.map(row=>{
+ const n=notes[row.source_id];
+ return {...row,id:n?.id??`melek-${row.source_id}`,penerbit:'Melek APBN',status:'published',topik:[],kata_kunci:row.judul.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(x=>x.length>3),tahun_anggaran:[],ringkasan:'Bacaan terkait tema '+row.judul+'. Isi dan kesimpulan perlu diperiksa pada halaman sumber.',...n,ditinjau_pada:catalog.diakses_pada,cakupan_tinjauan:n?'metadata_dan_ringkasan_editorial':'metadata_katalog'};
+});
+export const katalogMelek={diakses_pada:catalog.diakses_pada,jumlah_artikel:catalog.jumlah_artikel,jumlah_carousel:catalog.jumlah_carousel,sumber:catalog.sumber};

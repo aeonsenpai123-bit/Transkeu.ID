@@ -4,7 +4,7 @@ export function renderArticles(rows,{el}) {
   if(!safe.length)return null;
   return el('section', {class:'bacaan-terkait','aria-label':'Bacaan terkait dari Melek APBN'},
     el('h3',{},'Bacaan terkait · Melek APBN'),
-    el('p',{class:'catatan-kecil'},'Analisis dan edukasi tambahan. Angka serta grafik jawaban tetap merujuk dokumen resmi.'),
+    el('p',{class:'catatan-kecil'},'Ringkasan analisis sumber sekunder, bukan putusan benar/salah. Manfaat, risiko, dan hasil studi perlu diperiksa pada sumber asli; angka grafik tetap dari dokumen resmi.'),
     safe.map(a=>el('article',{class:'kartu-bacaan'},
       el('span',{class:'lencana'},a.jenis==='carousel'?'Carousel edukasi':'Artikel analisis'),
       el('h4',{},el('a',{href:a.url,target:'_blank',rel:'noopener noreferrer'},a.judul)),

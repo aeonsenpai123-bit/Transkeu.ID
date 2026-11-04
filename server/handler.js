@@ -1,3 +1,4 @@
+import { attachClaimCheck } from './claim-check.js';
 import { providerConfig } from './provider.js';
 import { attachImpacts } from './impacts.js';
 import { attachArticles } from './articles.js';
@@ -78,7 +79,7 @@ export async function handleQuestion(body, { env = process.env, ip = 'local', fe
 
   const finish = async result => ({
     code: 200,
-    body: await attachImpacts(await attachArticles(result, input.pertanyaan, input.riwayat, { env, logger }), input.pertanyaan, input.konteks_lapangan, { env, logger, history: input.riwayat }),
+    body: attachClaimCheck(await attachImpacts(await attachArticles(result, input.pertanyaan, input.riwayat, { env, logger }), input.pertanyaan, input.konteks_lapangan, { env, logger, history: input.riwayat }), input.pertanyaan),
   });
 
   const fallback = code => ({
