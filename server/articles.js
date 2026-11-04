@@ -1,4 +1,4 @@
-import { artikel } from '../data/artikel.js';
+import { artikel, katalogMelek } from '../data/artikel.js';
 import { normal, retrieve } from './retrieval.js';
 
 export function validArticle(a, now=new Date()) {
@@ -33,13 +33,14 @@ export async function loadArticles({env=process.env,db}={}) {
     }
     db=pool;
   }
-  const r=await db.query('SELECT * FROM artikel_pendukung WHERE status = $1 ORDER BY ditinjau_pada DESC, id LIMIT $2',['published',300]);
-  return r.rows;
+  const r=await db.query('SELECT * FROM artikel_pendukung WHERE status = ANY($1) ORDER BY ditinjau_pada DESC, id LIMIT $2',[['published','withdrawn','draft'],10000]);
+  const suppressed=new Set(r.rows.map(a=>a.id));
+  return [...r.rows.filter(a=>a.status==='published'),...artikel.filter(a=>!suppressed.has(a.id))];
 }
 export async function attachArticles(result, question,history,{env=process.env,logger=console,load=loadArticles}={}) {
   try {
     const rows=await load({env});
-    return {...result,bacaan_terkait:relatedArticles(question,history,rows),sumber_bacaan:env.DATABASE_URL?'database':'katalog_lokal'};
+    return {...result,bacaan_terkait:relatedArticles(question,history,rows),katalog_bacaan:katalogMelek,sumber_bacaan:env.DATABASE_URL?'database':'katalog_lokal'};
   } catch {
     // Artikel opsional: gangguan database tidak boleh menggagalkan jawaban anggaran.
     logger.warn(JSON.stringify({event:'article_catalog_unavailable'}));

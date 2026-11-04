@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseHTML} from 'linkedom';
-import {artikel} from '../data/artikel.js';
+import {artikel as katalog} from '../data/artikel.js';
+const artikel=['melek-jalan-tol','melek-efisiensi-energi','melek-tax-ratio'].map(id=>katalog.find(a=>a.id===id));
 import {relatedArticles,validArticle,attachArticles,loadArticles} from '../server/articles.js';
 import {factEligible} from '../server/retrieval.js';
 import {renderArticles} from '../src/articles-ui.js';
 import {handleQuestion} from '../server/handler.js';
-const now=new Date('2026-10-28T12:00:00Z');
+const now=new Date('2026-11-04T12:00:00Z');
 test('jalan tol mengarah ke bacaan infrastruktur, bukan pajak',()=>{
  const r=relatedArticles('Apa dampak pembangunan jalan tol?',[],artikel,{now});assert.equal(r.length,1);assert.equal(r[0].id,'melek-jalan-tol');
 });
@@ -25,7 +26,7 @@ test('kegagalan DB tidak merusak jawaban fiskal dan tidak menghidupkan artikel w
  const r=await attachArticles({status:'ok',ringkas:'Jawaban asli'},'jalan tol',[],{load:async()=>{throw new Error('db error secret');},logger:{warn(){}}});assert.equal(r.ringkas,'Jawaban asli');assert.deepEqual(r.bacaan_terkait,[]);
 });
 test('adapter DB memakai parameter status dan tidak menyisipkan pertanyaan',async()=>{
- let text,values;const r=await loadArticles({env:{},db:{query:async(t,v)=>{text=t;values=v;return {rows:artikel};}}});assert.ok(text.includes('status = $1'));assert.deepEqual(values,['published',300]);assert.equal(r.length,3);
+ let text,values;const r=await loadArticles({env:{},db:{query:async(t,v)=>{text=t;values=v;return {rows:artikel};}}});assert.ok(text.includes('status = ANY($1)'));assert.deepEqual(values,[['published','withdrawn','draft'],10000]);assert.equal(r.length,katalog.length);
 });
 test('endpoint Mode Dasar tetap memberi bacaan terkait',async()=>{
  const r=await handleQuestion({pertanyaan:'Subsidi energi dipakai buat apa?'},{env:{},logger:{warn(){}}});assert.equal(r.body.ai,false);assert.equal(r.body.bacaan_terkait[0].id,'melek-efisiensi-energi');

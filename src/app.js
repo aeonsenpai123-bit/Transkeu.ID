@@ -1,3 +1,4 @@
+import { renderClaimCheck } from './claim-check-ui.js';
 import { documentUrl, traceEvidence, evidenceText } from './evidence.js';
 import { renderImpacts } from './impacts-ui.js';
 import { renderArticles } from './articles-ui.js';
@@ -208,6 +209,7 @@ function kartuJawaban(pertanyaan, hasil) {
       el('p', { class: 'ringkas' }, el('strong', {}, hasil.istilah.istilah), `: ${hasil.istilah.arti}`),
       renderImpacts(hasil.hasil_lapangan, { el }),
       renderArticles(hasil.bacaan_terkait, { el }),
+      renderClaimCheck(hasil.pemeriksaan_klaim, { el }),
       chipsLanjutan(hasil.lanjutan),
       umpanBalik(pertanyaan, hasil));
   }
@@ -218,6 +220,7 @@ function kartuJawaban(pertanyaan, hasil) {
       el('a', { class: 'tombol', href: hasil.portal.url, target: '_blank', rel: 'noopener noreferrer' }, ikon('keluar'), `Buka ${hasil.portal.nama}`),
       renderImpacts(hasil.hasil_lapangan, { el }),
       renderArticles(hasil.bacaan_terkait, { el }),
+      renderClaimCheck(hasil.pemeriksaan_klaim, { el }),
       chipsLanjutan(hasil.lanjutan),
       umpanBalik(pertanyaan, hasil));
   }
@@ -251,6 +254,7 @@ function kartuJawaban(pertanyaan, hasil) {
     hasil.batasan?.length > 0 && el('div', { class: 'batasan' }, el('div', { class: 'judul-kecil', style: 'margin:0' }, ikon('info'), 'Batasan'), hasil.batasan.map((t) => el('p', {}, t))),
     renderImpacts(hasil.hasil_lapangan, { el }),
       renderArticles(hasil.bacaan_terkait, { el }),
+      renderClaimCheck(hasil.pemeriksaan_klaim, { el }),
       chipsLanjutan(hasil.lanjutan),
     umpanBalik(pertanyaan, hasil),
   );

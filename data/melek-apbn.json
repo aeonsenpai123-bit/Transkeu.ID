@@ -1,0 +1,193 @@
+{
+  "diakses_pada": "2026-11-04",
+  "sumber": "https://melekapbn.org/kajian",
+  "cakupan": "Seluruh entri berstatus published pada API publik saat sinkronisasi; bukan arsip historis atau konten privat.",
+  "jumlah_artikel": 5,
+  "jumlah_carousel": 8,
+  "items": [
+    {
+      "source_id": "eb5ee80d-4db0-43cf-a646-6c0d61e03272",
+      "judul": "Patriotisme Berkupon 2%",
+      "slug": "@universitas-indonesia/patriotisme-berkupon-2-891720",
+      "jenis": "analisis",
+      "url": "https://melekapbn.org/articles/@universitas-indonesia/patriotisme-berkupon-2-891720",
+      "penulis": [
+        "Fahmi Ibrahim",
+        "Muhammad Nur Asla Jr."
+      ],
+      "tanggal_terbit": "2026-10-03",
+      "kategori": "APBN & Anggaran",
+      "tags": [
+        "APBN 2026"
+      ]
+    },
+    {
+      "source_id": "e5553b92-2a8b-4a68-a391-824fdabf6bcf",
+      "judul": "Ambisi Pertumbuhan di Tengah Tekanan Fiskal",
+      "slug": "@universitas-indonesia/carousel-qinta-abe-316717",
+      "jenis": "analisis",
+      "url": "https://melekapbn.org/articles/@universitas-indonesia/carousel-qinta-abe-316717",
+      "penulis": [
+        "Abraham Kristian Doly Simanjuntak",
+        "Qintani Abigail Debra Sinaga"
+      ],
+      "tanggal_terbit": "2026-09-30",
+      "kategori": "Kebijakan Fiskal",
+      "tags": []
+    },
+    {
+      "source_id": "5930864d-2aed-4f8e-aedf-a4a29e6a543a",
+      "judul": "Miopia dibalik Kabut Asap",
+      "slug": "miopia-dibalik-kabut-asap",
+      "jenis": "analisis",
+      "url": "https://melekapbn.org/articles/miopia-dibalik-kabut-asap",
+      "penulis": [
+        "Agus Tio Faisal Nizar",
+        "Queena Aisha C"
+      ],
+      "tanggal_terbit": "2026-09-25",
+      "kategori": "APBN & Anggaran",
+      "tags": [
+        "APBN 2026"
+      ]
+    },
+    {
+      "source_id": "52f2d673-23c4-4265-a1e3-211375cbfd37",
+      "judul": "Mempelajari Dampak Pembangunan Jalan Tol dari Radiator Springs",
+      "slug": "mempelajari-dampak-pembangunan-jalan-tol-dari-radiator-springs",
+      "jenis": "analisis",
+      "url": "https://melekapbn.org/articles/mempelajari-dampak-pembangunan-jalan-tol-dari-radiator-springs",
+      "penulis": [
+        "Jodhie Marshal Pambudi Sinaga",
+        "Fari Abiyyu Santoso"
+      ],
+      "tanggal_terbit": "2026-09-25",
+      "kategori": "APBN & Anggaran",
+      "tags": []
+    },
+    {
+      "source_id": "a89c03bd-a428-4f74-9a05-f169a47963e3",
+      "judul": "Menyasar Ekonomi Bayangan",
+      "slug": "menyasar-ekonomi-bayangan",
+      "jenis": "analisis",
+      "url": "https://melekapbn.org/articles/menyasar-ekonomi-bayangan",
+      "penulis": [
+        "Fari Abiyyu Santoso",
+        "Jodhie Marshal Pambudi Sinaga"
+      ],
+      "tanggal_terbit": "2026-09-10",
+      "kategori": "Kebijakan Fiskal",
+      "tags": []
+    },
+    {
+      "source_id": "9b6962ba-509d-4d71-9060-7c209b946ce0",
+      "judul": "Apakah Kebijakan Energi Selalu Mampu Menjadi Kunci Efisiensi?",
+      "slug": "apakah-kebijakan-energi-selalu-mampu-menjadi-kunci-efisiensi",
+      "jenis": "carousel",
+      "url": "https://melekapbn.org/carousel/apakah-kebijakan-energi-selalu-mampu-menjadi-kunci-efisiensi",
+      "penulis": [],
+      "tanggal_terbit": null,
+      "kategori": null,
+      "tags": [
+        "melekapbn",
+        "reboundeffect",
+        "kebijakanpublik",
+        "fiscalpolicy",
+        "energyeconomics"
+      ]
+    },
+    {
+      "source_id": "a5fa37ed-d7ce-46f1-9a95-4552b759cf2b",
+      "judul": "Tax Ratio: Penyakit Kronis Perpajakan Indonesia & Mengapa Anda Harus Peduli",
+      "slug": "tax-ratio-penyakit-kronis-perpajakan-indonesia-mengapa-anda-harus-peduli",
+      "jenis": "carousel",
+      "url": "https://melekapbn.org/carousel/tax-ratio-penyakit-kronis-perpajakan-indonesia-mengapa-anda-harus-peduli",
+      "penulis": [],
+      "tanggal_terbit": null,
+      "kategori": null,
+      "tags": []
+    },
+    {
+      "source_id": "0fc81d96-ea04-4858-a586-fb1c37c5e32c",
+      "judul": "Optimisme Purbaya Tak Sejalan Dengan Ekonomi Saat Ini: Halusinasi atau Strategi?",
+      "slug": "optimisme-purbaya-tak-sejalan-dengan-ekonomi-saat-ini-halusinasi-atau-strategi",
+      "jenis": "carousel",
+      "url": "https://melekapbn.org/carousel/optimisme-purbaya-tak-sejalan-dengan-ekonomi-saat-ini-halusinasi-atau-strategi",
+      "penulis": [],
+      "tanggal_terbit": null,
+      "kategori": null,
+      "tags": [
+        "melekapbn",
+        "purbaya"
+      ]
+    },
+    {
+      "source_id": "0d71d45c-14c7-43e7-a96b-a2d933260abc",
+      "judul": "Sudahkah Indonesia Terlambat Memanfaatkan Bonus Demografi?",
+      "slug": "sudahkah-indonesia-terlambat-memanfaatkan-bonus-demografi",
+      "jenis": "carousel",
+      "url": "https://melekapbn.org/carousel/sudahkah-indonesia-terlambat-memanfaatkan-bonus-demografi",
+      "penulis": [],
+      "tanggal_terbit": null,
+      "kategori": null,
+      "tags": [
+        "melekapbn",
+        "bonusdemografi"
+      ]
+    },
+    {
+      "source_id": "90f0693d-f995-4de8-a3d8-a886a2390e84",
+      "judul": "Balada Kebijakan Perpajakan Hilirisasi Nikel Indonesia",
+      "slug": "nikel-apakek",
+      "jenis": "carousel",
+      "url": "https://melekapbn.org/carousel/nikel-apakek",
+      "penulis": [],
+      "tanggal_terbit": null,
+      "kategori": null,
+      "tags": [
+        "melekapbn",
+        "hilirisasinikel",
+        "kebijakanpajak",
+        "fiskalindonesia",
+        "insentifpajak"
+      ]
+    },
+    {
+      "source_id": "15d944a4-be32-4c09-b223-3202e4eda12c",
+      "judul": "Bahaya Populisme Fiskal: Mengapa Aturan Fiskal itu Ada?",
+      "slug": "bahaya-populisme-fiskal-mengapa-aturan-fiskal-itu-ada",
+      "jenis": "carousel",
+      "url": "https://melekapbn.org/carousel/bahaya-populisme-fiskal-mengapa-aturan-fiskal-itu-ada",
+      "penulis": [],
+      "tanggal_terbit": null,
+      "kategori": null,
+      "tags": [
+        "melekapbn",
+        "populis",
+        "fiskal"
+      ]
+    },
+    {
+      "source_id": "2e310f3d-3c71-4e23-b2f7-3132cd286d44",
+      "judul": "Dana Desa Dibawah Tekanan",
+      "slug": "dana-desa-dibawah-tekanan",
+      "jenis": "carousel",
+      "url": "https://melekapbn.org/carousel/dana-desa-dibawah-tekanan",
+      "penulis": [],
+      "tanggal_terbit": null,
+      "kategori": null,
+      "tags": []
+    },
+    {
+      "source_id": "b51e2a7a-ebea-4844-9070-4ff7f86c4729",
+      "judul": "Kenapa Sih, Kita Harus Lapor Pajak?",
+      "slug": "kenapa-sih-kita-harus-lapor-pajak",
+      "jenis": "carousel",
+      "url": "https://melekapbn.org/carousel/kenapa-sih-kita-harus-lapor-pajak",
+      "penulis": [],
+      "tanggal_terbit": null,
+      "kategori": null,
+      "tags": []
+    }
+  ]
+}

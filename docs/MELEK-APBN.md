@@ -1,73 +1,38 @@
-# Integrasi Melek APBN sebagai bacaan terkait
+# Melek APBN: indeks bacaan dan pemeriksaan klaim
 
-## Apa yang sudah diterapkan
+## Isi yang terhubung
 
-Jawaban Tanya AI kini mendapat field `bacaan_terkait`. Frontend menampilkannya setelah jawaban/grafik dalam kartu **Bacaan terkait · Melek APBN**. Jalur AI dan Mode Dasar sama-sama bisa mendapat bacaan. Artikel dipilih deterministik dari kata kunci pertanyaan dan konteks pertanyaan lanjutan, bukan tautan yang dikarang LLM.
+Snapshot katalog publik per 4 November 2026 memuat **5 artikel dan 8 carousel** dari halaman https://melekapbn.org/kajian. Jumlah mengikuti pagination API publik, bukan perkiraan dari mesin pencarian. Cakupan ini adalah seluruh entri berstatus published yang dikembalikan API pada saat akses, bukan arsip artikel yang sudah ditarik atau konten privat.
 
-Sumber primer untuk angka tetap `data/fakta.js`. Sumber sekunder disimpan terpisah pada `artikel_pendukung`; konten artikel tidak dimasukkan ke prompt angka atau grafik. Pengguna membaca analisis melalui tautan asli. Dengan demikian opini dalam artikel tidak berubah menjadi pernyataan resmi pemerintah.
+`data/melek-apbn.json` menyimpan judul, URL asli, penulis, tanggal terbit bila tersedia, kategori, dan tag. Tidak menyimpan isi lengkap, gambar, identitas editor, token atau data akun. Slug berorganisasi seperti `/articles/@universitas-indonesia/...` dipertahankan; tautan lama yang berbeda diganti dengan URL pada katalog saat ini. `data/artikel.js` menambahkan ringkasan editorial singkat dan kata kunci pencarian. Artikel baru yang belum dikurasi hanya memakai deskripsi tematik, tanpa kesimpulan dampak otomatis.
 
-## Contoh alur
+Tanya AI dan Mode Dasar mencari bacaan pada indeks yang sama. Contoh: jalan tol, karhutla, MBG, ekonomi bayangan, Dana Desa, hilirisasi nikel, Patriot Bond, tax ratio, efisiensi energi, dan pelaporan pajak. Hasil dibatasi pada bacaan relevan; tidak memaksakan artikel untuk tema yang belum tersedia. Tahun anggaran dikurasi terpisah dari tahun terbit. Bacaan umum tanpa tahun anggaran diberi keterangan bahwa bacaan tersebut bukan bukti realisasi untuk satu tahun.
 
-Pertanyaan: “Anggaran jalan dipakai untuk apa, dan apa dampaknya?”
+## Apa yang dimaksud validasi
 
-1. Retrieval mencari fakta APBN infrastruktur yang tersedia.
-2. LLM menjelaskan dengan bahasa sederhana dan rujukan resmi; persentase dihitung kode bila cakupan cocok.
-3. Modul artikel mengenali tema jalan/tol/infrastruktur.
-4. Jawaban menampilkan bacaan “Mempelajari Dampak Pembangunan Jalan Tol dari Radiator Springs”, dengan atribusi Melek APBN, penulis, dan tanggal 25 September 2026.
-5. Kartu diberi penjelasan bahwa bacaan tematik bukan bukti angka untuk tahun anggaran tertentu. Klaim dampak pada artikel tidak dipakai sebagai kesimpulan otomatis tentang realisasi APBN.
+Pertanyaan tentang kebenaran berita, manfaat atau dampak memperoleh bagian **Cara memeriksa klaim dan dampak**. Bagian ini menjelaskan pemeriksaan program, tahun, wilayah, sumber pendanaan, jenis angka, evaluasi primer dan batasan kesimpulan. Ringkasan bacaan menyebut peluang serta risiko yang dibahas sumber; keduanya bukan hasil audit Transkeu.ID.
 
-Pertanyaan pajak dapat menampilkan carousel tax ratio; pertanyaan energi dapat menampilkan carousel efisiensi energi. Untuk topik kesehatan/pendidikan yang belum memiliki artikel sesuai dalam katalog awal, tidak ada kartu yang dipaksakan muncul.
+Tiga lapisan sumber tetap terpisah:
 
-## Struktur data
+1. Fakta APBN resmi mendasari angka dan grafik.
+2. Artikel Melek APBN memberi konteks analisis sekunder dengan tautan dan atribusi.
+3. Bukti hasil/dampak pada `bukti_lapangan` memerlukan evaluasi, audit, statistik, atau laporan program yang lolos pemeriksaan. Dampak kausal memerlukan pembanding dan asumsi identifikasi.
 
-| Field | Fungsi |
-|---|---|
-| id, judul, url | Identitas dan tautan asli; URL unik. |
-| penerbit, penulis, jenis | Atribusi dan label analisis/carousel. |
-| tanggal_terbit | Tanggal publikasi; null bila belum terkonfirmasi. Bukan tanggal akses. |
-| ringkasan | Deskripsi editorial pendek, maksimum 450 karakter. Tidak menyalin artikel lengkap. |
-| topik, kata_kunci | Pemetaan ke pajak, pendidikan, kesehatan, subsidi_energi, infrastruktur, perlinsos, umum. |
-| tahun_anggaran | Tahun fiskal yang dibahas, bila teridentifikasi; jangan diisi hanya dari tahun publikasi. |
-| status | draft / published / withdrawn. Hanya published yang muncul. |
-| ditinjau_pada, cakupan_tinjauan | Tanggal pemeriksaan dan apakah pemeriksaan baru mencakup metadata katalog atau isi. |
+Pencocokan topik bukan putusan benar/salah. Penyerapan anggaran bukan bukti keberhasilan. Dana BUMN atau swasta bukan otomatis belanja APBN. Kajian daerah tertentu tidak digeneralisasi ke seluruh Indonesia. Jika bukti primer belum dimuat, platform menyatakan keterbatasannya. Tidak ada klaim bahwa seluruh referensi di artikel sudah diaudit, bahwa ada kemitraan resmi, atau bahwa isi artikel lengkap dimasukkan ke prompt LLM. Jawaban naratif AI tetap menggunakan evidence resmi; ringkasan artikel ditampilkan terpisah.
 
-Tiga metadata awal tersedia dalam `data/artikel.js`. Artikel jalan tol diperiksa halaman artikelnya. Dua carousel diperiksa judul, URL, dan deskripsi pada katalog; tanggal terbit serta penulis belum terkonfirmasi sehingga tidak diisi. Ringkasannya hanya mendeskripsikan tema, bukan menyimpulkan hasil kajian.
+## Memperbarui seluruh katalog
 
-## Cara memasang ke database PostgreSQL
-
-1. Gunakan database PostgreSQL milik proyek yang sudah tersedia. Tidak ada database eksternal yang dibuat dalam pekerjaan ini.
-2. Tambahkan `DATABASE_URL` sebagai Environment Variable server. Jangan masukkan connection string di frontend atau chat.
-3. Jalankan dari folder proyek:
-
-```powershell
-npm ci
-# Isi DATABASE_URL dalam .env di komputer sendiri.
-npm run db:seed-artikel
+```bash
+npm run sync:melek
+npm test
 ```
 
-Script menjalankan `db/artikel.sql` dan seed di dalam transaksi. Script memakai parameter SQL dan tidak menimpa data yang sudah ada, termasuk artikel yang statusnya withdrawn.
+Script mengambil endpoint GET publik `/api/articles` dan `/api/carousel` pada `api.melekapbn.org`, masing-masing dengan pagination. Tanpa login atau API key. Hanya metadata yang diizinkan dipersistenkan. Draft, konten dihapus dan publikasi masa depan diabaikan. Schema berubah, error HTTP, ID duplikat, jumlah tidak cocok atau batas halaman terlampaui akan membatalkan sinkronisasi. File lama dipertahankan hingga kedua koleksi berhasil lengkap. Script tidak mengunjungi endpoint admin.
 
-4. Pada Vercel, isi `DATABASE_URL` untuk Preview, lalu redeploy. Gunakan connection string pooled dari penyedia PostgreSQL sesuai instruksinya. Pertahankan pengaturan TLS penyedia; jangan menonaktifkan verifikasi sertifikat untuk memaksa koneksi.
-5. Beri akun aplikasi hak SELECT pada `artikel_pendukung`; pekerjaan kurasi/migrasi memakai akun pengelola terpisah. Browser tidak terhubung langsung ke database.
-6. Uji pertanyaan jalan tol, pajak, dan energi. Saat `DATABASE_URL` kosong, prototipe memakai katalog lokal yang sama. Saat URL diisi tetapi database bermasalah, kartu bacaan disembunyikan dan jawaban APBN tetap berjalan.
+Tinjau perubahan metadata dan ringkasan, commit, lalu deploy. Pembaruan ini **tidak otomatis setiap pertanyaan atau terjadwal**; label tanggal adalah tanggal pengambilan katalog, bukan jaminan pemeriksaan isi penuh. Artikel yang sudah dihapus akan hilang dari snapshot berikutnya. Semua 13 bacaan tersedia tanpa database tambahan.
 
-Migrasi/schema dan adapter telah disiapkan; koneksi dan migrasi pada database nyata belum dijalankan karena kredensial proyek tidak tersedia.
+## Database opsional
 
-## Menambah atau memperbarui artikel
+`npm run db:seed-artikel` membuat tabel dan memasukkan metadata. Loader menggabungkan snapshot dengan data editorial database. Entri database dengan ID sama mengambil prioritas, termasuk status withdrawn/draft yang menekan versi snapshot. Gangguan database menyembunyikan bacaan daripada menghidupkan kembali bacaan yang mungkin sudah ditarik. Batas baca database 10.000 entri; instalasi yang melebihi batas memerlukan pagination database.
 
-Versi ini menggunakan **kurasi metadata**, bukan sinkronisasi otomatis seluruh situs.
-
-1. Temukan artikel/carousel publik dari https://melekapbn.org/kajian.
-2. Buka tautan spesifik. Catat judul, penerbit, penulis, tanggal bila tersedia, jenis dan topik. Jangan mengisi tanggal yang tidak tampil.
-3. Tulis deskripsi singkat dengan kata sendiri. Simpan tautan, bukan salinan artikel lengkap atau gambar carousel.
-4. Masukkan sebagai draft, periksa konteks dan keterkaitan dengan pertanyaan APBN, kemudian ubah menjadi published.
-5. Untuk konten yang ditarik, tautan berubah, atau tidak relevan lagi, ubah menjadi withdrawn atau perbarui metadatanya.
-6. Jika kelak Melek APBN menyediakan API/RSS yang disepakati, buat sinkronisasi terjadwal yang memasukkan hasil baru ke draft untuk ditinjau. Belum ada API/RSS resmi yang terverifikasi dalam pekerjaan ini; jangan membuat endpoint WordPress/RSS berdasarkan tebakan.
-
-Tidak ada pengambilan semua halaman, penyimpanan artikel lengkap, penyalinan gambar, atau kemitraan resmi dengan Melek APBN yang diklaim pada implementasi ini.
-
-## Pengujian
-
-`npm test`: 40 pengujian lolos, termasuk relevansi topik, tanggal belum diketahui, tahun fiskal berbeda, penolakan URL tidak sah, deduplikasi, penolakan sumber sekunder sebagai fakta angka, fallback bila DB gagal, query adapter berparameter, dan render kartu tanpa mengeksekusi HTML.
-
-Pengujian database memakai adapter simulasi; belum menjalankan PostgreSQL nyata. Pengujian provider LLM masih simulasi. Kualitas kecocokan berita perlu dievaluasi pada kumpulan pertanyaan pengguna; pencocokan kata kunci bukan pencarian semantik penuh.
+Sumber pendukung tidak mengubah tabel fakta atau perhitungan APBN. Jangan memasukkan nilai anggaran, klaim dampak positif/negatif, atau penilaian berita ke tabel fakta hanya karena muncul dalam artikel.
