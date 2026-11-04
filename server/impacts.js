@@ -25,7 +25,9 @@ export function resolveImpactContext(question,provided={},history=[]) {
   const aliases={ 'jejak-pip':['pip','program indonesia pintar'], 'jejak-kip-kuliah':['kip kuliah'], 'jejak-bos':['bos','bantuan operasional sekolah'], 'jejak-pkh':['pkh','program keluarga harapan'] };
   // Hanya nama program eksplisit, tidak menyamakan satu sektor dengan satu program.
   const named=jejakAnggaran.find(p=>q.includes(normal(p.nama))) ?? jejakAnggaran.find(p=>(aliases[p.id]??[]).some(a=>` ${q} `.includes(` ${a} `)));
-  return {program_id:provided.program_id??named?.id,tahun_anggaran:provided.tahun_anggaran??(year?Number(year):undefined),wilayah_kode:provided.wilayah_kode};
+  const followup = /^(terus|lalu|kalau|nah|yang|itu|kok|kenapa|jadi|sudah|berapa persen|apa (hasil|dampak|manfaat)|hasilnya|dampaknya|manfaatnya|sumbernya)/.test(q);
+  const previous = !named && followup ? [...history].reverse().map(h => resolveImpactContext(h.tanya ?? '')).find(c => c.program_id) : null;
+  return {program_id:provided.program_id??named?.id??previous?.program_id,tahun_anggaran:provided.tahun_anggaran??(year?Number(year):previous?.tahun_anggaran),wilayah_kode:provided.wilayah_kode};
 }
 export async function loadImpacts({env=process.env}={}) {
   if(!env.DATABASE_URL)return buktiLapangan;
@@ -36,8 +38,8 @@ export async function loadImpacts({env=process.env}={}) {
     const r=await pool.query('SELECT payload FROM bukti_lapangan WHERE status = $1 LIMIT $2',['published',500]);return r.rows.map(r=>r.payload);
   }finally{await pool.end();}
 }
-export async function attachImpacts(result,question,provided={}, {env=process.env,load=loadImpacts,logger=console}={}) {
-  const context=resolveImpactContext(question,provided);
+export async function attachImpacts(result,question,provided={}, {env=process.env,load=loadImpacts,logger=console,history=[]}={}) {
+  const context=resolveImpactContext(question,provided,history);
   if(!/dampak|manfaat|hasil program|lapangan|sekitar|masalah|ketepatan sasaran/i.test(question)&&!context.program_id)return result;
   try{return {...result,hasil_lapangan:selectImpacts(context,await load({env}))};}
   catch{logger.warn(JSON.stringify({event:'impact_catalog_unavailable'}));return {...result,hasil_lapangan:{status:'gangguan_sumber',pesan:'Bukti lapangan belum dapat diperiksa saat ini.',bukti:[]}};}

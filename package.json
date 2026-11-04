@@ -5,12 +5,17 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env scripts/serve.js",
     "test": "node --test",
-    "audit:data": "node scripts/audit-data.js"
+    "audit:data": "node scripts/audit-data.js",
+    "db:seed-artikel": "node --env-file-if-exists=.env scripts/seed-artikel.js"
   },
   "dependencies": {
-    "@google/genai": "^2.31.0"
+    "@google/genai": "^2.31.0",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "linkedom": "^0.18.14"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

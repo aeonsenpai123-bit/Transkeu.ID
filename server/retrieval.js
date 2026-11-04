@@ -18,9 +18,10 @@ function expanded(text) {
 // Dokumen kecil: lexical retrieval dengan perluasan sinonim, bukan embedding atau fine-tuning.
 export function retrieve(question, history = [], data = corpus) {
   const q = expanded(question);
-  const followup = /^(terus|lalu|kalau|nah|yang|itu|kok|kenapa|jadi|berapa persen|sudah berapa|coba|tampilkan|buatkan|gambarkan|jelasin|jelaskan lagi)/.test(q) && !data.topik.some(t => t.kata_kunci.some(k => q.includes(normal(k))));
-  const previous = history.at(-1)?.tanya ?? '';
-  const query = followup ? `${expanded(previous)} ${q}` : q;
+  const followup = /^(terus|lalu|kalau|nah|yang|itu|kok|kenapa|jadi|berapa persen|sudah berapa|coba|tampilkan|buatkan|gambarkan|jelasin|jelaskan lagi|sumbernya|hasilnya|dampaknya|manfaatnya)/.test(q) && !data.topik.some(t => t.kata_kunci.some(k => q.includes(normal(k))));
+  const previous = [...history].reverse().find(h => data.topik.some(t => t.id !== 'umum' && t.kata_kunci.some(k => expanded(h.tanya ?? '').includes(normal(k)))))?.tanya ?? history.at(-1)?.tanya ?? '';
+  const previousText = /\b20\d{2}\b/.test(q) ? expanded(previous).replace(/\b20\d{2}\b/g, '') : expanded(previous);
+  const query = followup ? `${previousText} ${q}` : q;
   const tokens = [...new Set(query.split(' ').filter(w => w.length > 2))];
   const years = [...new Set(query.match(/\b20\d{2}\b/g) ?? [])].map(Number);
   const topics = data.topik.filter(t => t.kata_kunci.some(k => query.includes(normal(k))));

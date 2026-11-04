@@ -1,3 +1,4 @@
+import { documentUrl, traceEvidence, evidenceText } from './evidence.js';
 import { renderImpacts } from './impacts-ui.js';
 import { renderArticles } from './articles-ui.js';
 import { fakta, kegunaan } from '../data/fakta.js';
@@ -75,7 +76,7 @@ function bukaSumber(b) {
     el('div', { class: 'judul-kecil' }, 'Kutipan asli'),
     el('blockquote', { class: 'kutipan' }, b.kutipan),
     b.catatan ? el('p', { class: 'catatan-kecil', style: 'margin-bottom:16px' }, `Catatan: ${b.catatan}`) : null,
-    el('a', { class: 'tombol tombol-utama', href: b.url, target: '_blank', rel: 'noopener noreferrer', style: 'width:100%' }, ikon('keluar'), 'Buka dokumen asli (tab baru)'),
+    el('a', { class: 'tombol tombol-utama', href: documentUrl(b), target: '_blank', rel: 'noopener noreferrer', style: 'width:100%' }, ikon('keluar'), 'Buka dokumen asli (tab baru)'),
   );
 }
 
@@ -161,45 +162,11 @@ function umpanBalik(pertanyaan, hasil) {
 
 /* ---------- Kartu jawaban ---------- */
 function bukaPengaturanAI() {
-  const tersimpan = simpan.baca('transkeu.api_key', '');
-  const input = el('input', {
-    type: 'password',
-    value: tersimpan,
-    placeholder: 'Tempel kunci API Google Gemini (AIza...) atau Anthropic (sk-ant-...)',
-    style: 'width:100%;padding:10px 12px;margin:12px 0 6px;border:1px solid var(--garis-kuat);border-radius:10px;font-family:monospace;font-size:13px;',
-  });
-  const statusPesan = el('p', { class: 'catatan-kecil' }, tersimpan ? 'Status: Kunci API aktif tersimpan di peramban ini.' : 'Kunci disimpan aman hanya di localStorage peramban Anda.');
-  const tombolSimpan = el('button', {
-    class: 'tombol tombol-utama',
-    type: 'button',
-    onclick: () => {
-      const v = input.value.trim();
-      simpan.tulis('transkeu.api_key', v);
-      toast(v ? 'Kunci API berhasil disimpan! Tanya AI kini aktif.' : 'Kunci API dihapus. Menggunakan setelan server.');
-      $('sheet').close();
-    },
-  }, 'Simpan Kunci');
-  const tombolHapus = tersimpan ? el('button', {
-    class: 'tombol',
-    type: 'button',
-    style: 'margin-left:8px',
-    onclick: () => {
-      simpan.tulis('transkeu.api_key', '');
-      toast('Kunci API lokal dihapus.');
-      $('sheet').close();
-    },
-  }, 'Hapus') : null;
-
-  bukaSheet(
-    'Pengaturan Kunci AI',
-    'pengaturan',
-    el('div', { style: 'padding:8px 0' },
-      el('p', {}, 'Aktifkan mode percakapan sehari-hari dengan memasukkan kunci API Google Gemini (gratis di aistudio.google.com) atau Anthropic Claude.'),
-      input,
-      el('div', { style: 'display:flex;align-items:center;margin-top:10px' }, tombolSimpan, tombolHapus),
-      statusPesan
-    )
-  );
+  bukaSheet('Tentang Tanya AI', 'pengaturan', el('div', {},
+    el('p', {}, 'Tanya AI menjelaskan data anggaran dengan bahasa sehari-hari. Angka, grafik, dan rujukannya diambil dari data yang tersedia.'),
+    el('p', {}, 'Jika layanan AI belum tersedia, jawaban memakai Mode Dasar. Pengelola mengaktifkan layanan melalui konfigurasi server; kamu tidak perlu memasukkan kunci API.'),
+    el('p', {}, 'Bacaan terkait memberi konteks tambahan. Hasil dan dampak program hanya ditampilkan jika bukti yang sesuai telah tersedia.')
+  ));
 }
 
 function kepalaJawaban(hasil) {
@@ -208,7 +175,7 @@ function kepalaJawaban(hasil) {
     el('strong', {}, 'Transkeu'),
     hasil.ai
       ? el('span', { class: 'mode', title: 'AI menjelaskan; semua angka diisi program dari tabel fakta' }, 'AI · angka dari tabel fakta')
-      : el('span', { class: 'mode dasar', style: 'cursor:pointer', onclick: bukaPengaturanAI, title: hasil.catatan_mode ? `${hasil.catatan_mode} (Ketuk untuk atur kunci API)` : 'AI sedang tidak aktif; ketuk untuk atur kunci API' }, 'Mode dasar'),
+      : el('span', { class: 'mode dasar', style: 'cursor:pointer', onclick: bukaPengaturanAI, title: hasil.catatan_mode ? `${hasil.catatan_mode} (Ketuk untuk informasi)` : 'AI sedang tidak aktif; ketuk untuk informasi' }, 'Mode dasar'),
     !hasil.ai && hasil.catatan_mode ? el('span', { class: 'catatan-kecil' }, hasil.catatan_mode) : null);
 }
 
@@ -278,6 +245,9 @@ function kartuJawaban(pertanyaan, hasil) {
       el('ul', { class: 'sumber-list' }, hasil.angka.map((b, n) => el('li', {},
         el('button', { type: 'button', class: 'tombol-sumber', onclick: () => bukaSumber(b) },
           el('span', { class: 'no' }, `[${n + 1}]`), el('span', { class: 'teks' }, `${labelJenis(b)}: ${judulSumber(b)}`), ikon('panah')))))),
+    hasil.angka?.length > 0 && el('div', { class: 'chips aksi-bukti' },
+      el('button', { type: 'button', class: 'chip', onclick: () => mulaiAspirasi(hasil.angka) }, 'Susun aspirasi dari bukti ini'),
+      el('button', { type: 'button', class: 'chip', onclick: () => { tampilJejak(hasil.angka[0].topik); pindahTab('jejak'); window.scrollTo(0, 0); } }, 'Telusuri program terkait')),
     hasil.batasan?.length > 0 && el('div', { class: 'batasan' }, el('div', { class: 'judul-kecil', style: 'margin:0' }, ikon('info'), 'Batasan'), hasil.batasan.map((t) => el('p', {}, t))),
     renderImpacts(hasil.hasil_lapangan, { el }),
       renderArticles(hasil.bacaan_terkait, { el }),
@@ -292,7 +262,6 @@ let sedangMenjawab = false;
 
 async function tanyaServer(pertanyaan, konteks_lapangan = {}) {
   try {
-    const userKey = simpan.baca('transkeu.api_key', '') || undefined;
     const r = await fetch('/api/tanya', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -300,14 +269,13 @@ async function tanyaServer(pertanyaan, konteks_lapangan = {}) {
         pertanyaan,
         riwayat: riwayatAI.slice(-3),
         konteks_lapangan,
-        api_key: userKey,
       }),
       signal: AbortSignal.timeout(45000),
     });
     if (r.status === 429) toast('Batas pertanyaan AI hari ini habis. Jawaban memakai mode dasar.');
     if (!r.ok) return { ...jawab(pertanyaan, data), ai: false, catatan_mode: 'Layanan AI belum bisa dihubungi. Jawaban ini memakai Mode Dasar.' };
     const result = await r.json();
-    if (!['ok', 'istilah', 'tidak_tersedia'].includes(result?.status)) throw new Error('Respons tidak sesuai');
+    if (!['ok', 'istilah', 'klarifikasi', 'tidak_tersedia'].includes(result?.status)) throw new Error('Respons tidak sesuai');
     return result;
   } catch {
     return { ...jawab(pertanyaan, data), ai: false, catatan_mode: 'Layanan AI belum bisa dihubungi. Jawaban ini memakai Mode Dasar.' };
@@ -340,7 +308,7 @@ async function tanya(pertanyaan, konteks_lapangan = {}) {
 
 function sapa() {
   const terakhir = simpan.baca('transkeu.riwayat', []);
-  const tersimpanKey = simpan.baca('transkeu.api_key', '');
+  try { localStorage.removeItem('transkeu.api_key'); } catch { /* penyimpanan opsional */ }
   return el('div', { class: 'sapa', id: 'sapa' },
     el('img', { class: 'avatar-besar logo-avatar', src: 'assets/logo.jpg', alt: 'Logo Transkeu.ID' }),
     el('h2', {}, 'Halo, aku Transkeu'),
@@ -351,7 +319,7 @@ function sapa() {
         class: 'chip',
         style: 'border-color:var(--biru-500);background:var(--biru-50);color:var(--biru-900);font-weight:700',
         onclick: bukaPengaturanAI,
-      }, tersimpanKey ? '✨ AI Aktif (Kunci tersimpan)' : '⚙️ Aktifkan AI (Masukkan Kunci Gemini/Claude)')
+      }, 'Tentang Tanya AI')
     ),
     el('div', { class: 'saran' }, contohAwal.map((q) => el('button', { type: 'button', onclick: () => tanya(q) }, q))),
     terakhir.length ? el('div', { style: 'margin-top:20px' }, el('div', { class: 'judul-kecil', style: 'justify-content:center' }, 'Pertanyaanmu sebelumnya'),
@@ -494,15 +462,16 @@ function renderJejakStep(judul, dataStep, kelasBadge, statusCapaian = 'tersedia'
     el('div', { class: 'step-header' },
       el('span', { class: 'step-nomor' }, judul),
       el('span', { class: `step-badge step-badge-${isBelum ? 'belum' : kelasBadge}` },
-        isBelum ? 'Belum Rilis' : (isCapaian ? 'Output Fisik' : (dataStep.satuan ?? ''))),
+        isBelum ? 'Belum dimuat' : (isCapaian ? 'Output Fisik' : (dataStep.satuan ?? ''))),
     ),
     el('div', { class: 'step-nilai' },
       isCapaian
-        ? (isBelum ? 'Belum dipublikasikan' : dataStep.output_fisik)
+        ? (isBelum ? 'Belum tersedia dalam katalog' : dataStep.output_fisik)
         : (dataStep.nilai != null ? formatNilai(dataStep) : 'Belum dirinci'),
     ),
     el('div', { class: 'step-label' }, dataStep.label),
-    dataStep.dokumen && dataStep.url
+    el('p', { class: 'catatan-kecil' }, `TA ${dataStep.tahun_anggaran} · Cakupan: ${dataStep.cakupan ?? 'mengikuti dokumen'}`),
+    dataStep.dokumen && documentUrl(dataStep) && dataStep.halaman_atau_tabel && dataStep.kutipan
       ? el('button', {
           type: 'button',
           class: 'step-tombol-sumber',
@@ -510,9 +479,7 @@ function renderJejakStep(judul, dataStep, kelasBadge, statusCapaian = 'tersedia'
             ...dataStep,
             pos: dataStep.label,
             jenis_angka: isCapaian ? 'Capaian Output' : (kelasBadge === 'alokasi' ? 'Anggaran' : 'Realisasi'),
-            tahun_anggaran: 2026,
-            diperiksa_oleh: ['Ridho Rambu Bassae', 'Nisaa'],
-            tanggal_periksa: '22 Oktober 2026',
+            tahun_anggaran: dataStep.tahun_anggaran,
           }),
         }, ikon('dokumen'), 'Lihat dokumen sumber')
       : null,
@@ -520,9 +487,8 @@ function renderJejakStep(judul, dataStep, kelasBadge, statusCapaian = 'tersedia'
 }
 
 function kartuJejak(item) {
-  const alokasi = item.tahap.alokasi;
-  const realisasi = item.tahap.realisasi;
-  const capaian = item.tahap.capaian;
+  const trace = traceEvidence(item);
+  const [alokasi, realisasi, capaian] = trace.stages;
 
   return el('article', { class: 'jejak-kartu' },
     el('div', { class: 'jejak-header' },
@@ -534,7 +500,7 @@ function kartuJejak(item) {
       el('button', {
         type: 'button',
         class: 'tombol-teks',
-        onclick: () => tanya(`Bagaimana alokasi dan realisasi ${item.nama.toLowerCase()}?`),
+        onclick: () => tanya(`Bagaimana alokasi dan realisasi ${item.nama.toLowerCase()} TA ${item.tahun_anggaran}?`, { program_id: item.id, tahun_anggaran: item.tahun_anggaran }),
       }, 'Tanya AI', ikon('panah')),
     ),
     el('div', { class: 'jejak-alur' },
@@ -542,6 +508,9 @@ function kartuJejak(item) {
       renderJejakStep('2. Realisasi Belanja', realisasi, 'realisasi'),
       renderJejakStep('3. Capaian Fisik', capaian, 'capaian', capaian.status),
     ),
+    trace.warnings.map(teks => el('p', { class: 'batasan' }, teks)),
+    trace.comparable && renderVisual({ tipe: 'batang', judul: `Pagu dan realisasi ${item.nama}`, satuan: alokasi.satuan, items: [alokasi, realisasi] }, { onBukaSumber: bukaSumber, el }),
+    el('button', { type: 'button', class: 'tombol', onclick: () => mulaiAspirasi(trace.stages) }, 'Susun aspirasi dengan sumber program'),
     el('div', { class: 'jejak-bukti-lapangan' },
       el('h4', {}, '4. Hasil dan dampak di lapangan'),
       el('p', {}, 'Periksa manfaat, perubahan yang diamati, dan masalah pelaksanaan berdasarkan bukti evaluasi. Jika bukti belum dimuat, hasil tidak diperkirakan.'),
@@ -600,7 +569,15 @@ function tampilJejak(filter = 'semua') {
 tampilJejak();
 
 /* ---------- Aspirasi Berbasis Data (Paper: Warga Mengawasi APBN) ---------- */
-function tampilAspirasi() {
+function mulaiAspirasi(rows) {
+  const proof = evidenceText(rows);
+  if (!proof) return toast('Bukti dokumen belum lengkap untuk menyusun rujukan.');
+  tampilAspirasi({ proof, topic: rows[0]?.topik });
+  pindahTab('aspirasi');
+  $('asp-data').scrollIntoView({ behavior: 'smooth' });
+  toast('Data dan tautan sumber telah dimasukkan. Lengkapi masalah serta usulanmu.');
+}
+function tampilAspirasi(seed = {}) {
   const topikList = [
     'Pendidikan (Sekolah, Beasiswa, Fasilitas Belajar)',
     'Kesehatan (BPJS PBI, Layanan RS, Skrining Kesehatan)',
@@ -632,10 +609,13 @@ function tampilAspirasi() {
 
   const textData = el('textarea', {
     id: 'asp-data',
-    placeholder: 'Sebutkan angka atau dokumen resmi dari Transkeu.ID (misal: "APBN 2026 mengalokasikan PIP Rp11,2 T untuk 16 juta siswa menurut Konpers APBN KiTa Oktober 2026")',
+    placeholder: 'Sebutkan angka atau dokumen resmi dari Transkeu.ID (misal: "Pilih bukti dari jawaban atau Jejak Anggaran agar jenis angka, periode, dan tautan ikut tersalin")',
     rows: '2',
-    maxlength: '400',
+    maxlength: '12000',
   });
+
+  textData.value = seed.proof ?? '';
+  if (seed.topic) { const idx = ['pendidikan','kesehatan','perlinsos','infrastruktur','subsidi_energi','pajak'].indexOf(seed.topic); if (idx >= 0) { for (const option of selectTopik.options) option.selected = option.value === topikList[idx]; } }
 
   const textMasukan = el('textarea', {
     id: 'asp-masukan',
@@ -720,7 +700,7 @@ function tampilAspirasi() {
   $('aspirasi-data').replaceChildren(
     kepalaBagian('Aspirasi Berbasis Data', 'Ubah Suara Warga Jadi Masukan Berbobot', 'Gunakan data anggaran resmi untuk menyusun kritik dan masukan yang kredibel, santun, dan dapat dipertanggungjawabkan kepada instansi terkait.', 'aspirasi'),
     el('div', { class: 'aspirasi-intro kartu' },
-      el('p', {}, 'Kritik publik sering kali diabaikan karena dianggap sekadar keluhan tanpa dasar. Transkeu.ID memfasilitasi Anda menghubungkan persoalan nyata di lapangan dengan angka alokasi resmi negara, sehingga masukan Anda memiliki bobot advokasi yang kuat.'),
+      el('p', {}, 'Hubungkan masalah yang kamu alami dengan data dan dokumen yang relevan. Periksa kembali kutipan sebelum mengirim. Angka nasional belum membuktikan kondisi di satu daerah; tanggapan instansi tidak dijanjikan.'),
     ),
     form,
     wadahDraf,

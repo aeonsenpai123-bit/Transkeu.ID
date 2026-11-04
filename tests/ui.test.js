@@ -31,6 +31,15 @@ test('alur Tanya AI merender narasi, sumber per paragraf, grafik/tabel dan pembu
  const toggle=card.querySelector('.tombol-visual-tab');toggle.click();assert.equal(toggle.textContent,'Tampilkan grafik');assert.equal(card.querySelector('.visual-badan-tabel').hidden,false);
  card.querySelector('.sumber-paragraf').click();assert.ok(document.getElementById('sheet').hasAttribute('open'));assert.ok(document.getElementById('sheet-badan').textContent.includes(a.dokumen));
  assert.ok(!card.textContent.includes('{{'));
+ const action=[...card.querySelectorAll('button')].find(b=>b.textContent==='Susun aspirasi dari bukti ini');assert.ok(action);action.click();
+ assert.equal(document.body.dataset.tab,'aspirasi');
+ const proof=document.getElementById('asp-data').value;assert.ok(proof.includes(a.dokumen));assert.ok(proof.includes(r.halaman_atau_tabel));assert.ok(proof.includes('https://'));assert.ok(proof.includes('Realisasi'));
+ document.getElementById('asp-masalah').value='Mohon penjelasan layanan pendidikan';document.getElementById('asp-masukan').value='Mohon rincian capaian dan periode';
+ document.querySelector('.form-aspirasi').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
+ assert.ok(document.querySelector('.draf-preview').textContent.includes(a.dokumen));assert.ok(document.querySelector('.draf-preview').textContent.includes('Mohon rincian'));
+ const jejak=document.getElementById('jejak-anggaran');
+ assert.ok(jejak.textContent.includes('cakupan atau kelengkapan datanya berbeda'));assert.ok(jejak.textContent.includes('bukan hasil belanja TA 2026'));
+
 });
 
 test('grafik fallback tidak menggambar rasio untuk unit atau cakupan campuran',async()=>{
