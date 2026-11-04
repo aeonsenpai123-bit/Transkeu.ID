@@ -1,3 +1,4 @@
+import { documentUrl, traceEvidence, evidenceText } from './evidence.js';
 import { renderImpacts } from './impacts-ui.js';
 import { renderArticles } from './articles-ui.js';
 import { fakta, kegunaan } from '../data/fakta.js';
@@ -75,7 +76,7 @@ function bukaSumber(b) {
     el('div', { class: 'judul-kecil' }, 'Kutipan asli'),
     el('blockquote', { class: 'kutipan' }, b.kutipan),
     b.catatan ? el('p', { class: 'catatan-kecil', style: 'margin-bottom:16px' }, `Catatan: ${b.catatan}`) : null,
-    el('a', { class: 'tombol tombol-utama', href: b.url, target: '_blank', rel: 'noopener noreferrer', style: 'width:100%' }, ikon('keluar'), 'Buka dokumen asli (tab baru)'),
+    el('a', { class: 'tombol tombol-utama', href: documentUrl(b), target: '_blank', rel: 'noopener noreferrer', style: 'width:100%' }, ikon('keluar'), 'Buka dokumen asli (tab baru)'),
   );
 }
 
@@ -244,6 +245,9 @@ function kartuJawaban(pertanyaan, hasil) {
       el('ul', { class: 'sumber-list' }, hasil.angka.map((b, n) => el('li', {},
         el('button', { type: 'button', class: 'tombol-sumber', onclick: () => bukaSumber(b) },
           el('span', { class: 'no' }, `[${n + 1}]`), el('span', { class: 'teks' }, `${labelJenis(b)}: ${judulSumber(b)}`), ikon('panah')))))),
+    hasil.angka?.length > 0 && el('div', { class: 'chips aksi-bukti' },
+      el('button', { type: 'button', class: 'chip', onclick: () => mulaiAspirasi(hasil.angka) }, 'Susun aspirasi dari bukti ini'),
+      el('button', { type: 'button', class: 'chip', onclick: () => { tampilJejak(hasil.angka[0].topik); pindahTab('jejak'); window.scrollTo(0, 0); } }, 'Telusuri program terkait')),
     hasil.batasan?.length > 0 && el('div', { class: 'batasan' }, el('div', { class: 'judul-kecil', style: 'margin:0' }, ikon('info'), 'Batasan'), hasil.batasan.map((t) => el('p', {}, t))),
     renderImpacts(hasil.hasil_lapangan, { el }),
       renderArticles(hasil.bacaan_terkait, { el }),
@@ -458,15 +462,16 @@ function renderJejakStep(judul, dataStep, kelasBadge, statusCapaian = 'tersedia'
     el('div', { class: 'step-header' },
       el('span', { class: 'step-nomor' }, judul),
       el('span', { class: `step-badge step-badge-${isBelum ? 'belum' : kelasBadge}` },
-        isBelum ? 'Belum Rilis' : (isCapaian ? 'Output Fisik' : (dataStep.satuan ?? ''))),
+        isBelum ? 'Belum dimuat' : (isCapaian ? 'Output Fisik' : (dataStep.satuan ?? ''))),
     ),
     el('div', { class: 'step-nilai' },
       isCapaian
-        ? (isBelum ? 'Belum dipublikasikan' : dataStep.output_fisik)
+        ? (isBelum ? 'Belum tersedia dalam katalog' : dataStep.output_fisik)
         : (dataStep.nilai != null ? formatNilai(dataStep) : 'Belum dirinci'),
     ),
     el('div', { class: 'step-label' }, dataStep.label),
-    dataStep.dokumen && dataStep.url
+    el('p', { class: 'catatan-kecil' }, `TA ${dataStep.tahun_anggaran} · Cakupan: ${dataStep.cakupan ?? 'mengikuti dokumen'}`),
+    dataStep.dokumen && documentUrl(dataStep) && dataStep.halaman_atau_tabel && dataStep.kutipan
       ? el('button', {
           type: 'button',
           class: 'step-tombol-sumber',
@@ -474,9 +479,7 @@ function renderJejakStep(judul, dataStep, kelasBadge, statusCapaian = 'tersedia'
             ...dataStep,
             pos: dataStep.label,
             jenis_angka: isCapaian ? 'Capaian Output' : (kelasBadge === 'alokasi' ? 'Anggaran' : 'Realisasi'),
-            tahun_anggaran: 2026,
-            diperiksa_oleh: ['Ridho Rambu Bassae', 'Nisaa'],
-            tanggal_periksa: '22 Oktober 2026',
+            tahun_anggaran: dataStep.tahun_anggaran,
           }),
         }, ikon('dokumen'), 'Lihat dokumen sumber')
       : null,
@@ -484,9 +487,8 @@ function renderJejakStep(judul, dataStep, kelasBadge, statusCapaian = 'tersedia'
 }
 
 function kartuJejak(item) {
-  const alokasi = item.tahap.alokasi;
-  const realisasi = item.tahap.realisasi;
-  const capaian = item.tahap.capaian;
+  const trace = traceEvidence(item);
+  const [alokasi, realisasi, capaian] = trace.stages;
 
   return el('article', { class: 'jejak-kartu' },
     el('div', { class: 'jejak-header' },
@@ -498,7 +500,7 @@ function kartuJejak(item) {
       el('button', {
         type: 'button',
         class: 'tombol-teks',
-        onclick: () => tanya(`Bagaimana alokasi dan realisasi ${item.nama.toLowerCase()}?`),
+        onclick: () => tanya(`Bagaimana alokasi dan realisasi ${item.nama.toLowerCase()} TA ${item.tahun_anggaran}?`, { program_id: item.id, tahun_anggaran: item.tahun_anggaran }),
       }, 'Tanya AI', ikon('panah')),
     ),
     el('div', { class: 'jejak-alur' },
@@ -506,6 +508,9 @@ function kartuJejak(item) {
       renderJejakStep('2. Realisasi Belanja', realisasi, 'realisasi'),
       renderJejakStep('3. Capaian Fisik', capaian, 'capaian', capaian.status),
     ),
+    trace.warnings.map(teks => el('p', { class: 'batasan' }, teks)),
+    trace.comparable && renderVisual({ tipe: 'batang', judul: `Pagu dan realisasi ${item.nama}`, satuan: alokasi.satuan, items: [alokasi, realisasi] }, { onBukaSumber: bukaSumber, el }),
+    el('button', { type: 'button', class: 'tombol', onclick: () => mulaiAspirasi(trace.stages) }, 'Susun aspirasi dengan sumber program'),
     el('div', { class: 'jejak-bukti-lapangan' },
       el('h4', {}, '4. Hasil dan dampak di lapangan'),
       el('p', {}, 'Periksa manfaat, perubahan yang diamati, dan masalah pelaksanaan berdasarkan bukti evaluasi. Jika bukti belum dimuat, hasil tidak diperkirakan.'),
@@ -564,7 +569,15 @@ function tampilJejak(filter = 'semua') {
 tampilJejak();
 
 /* ---------- Aspirasi Berbasis Data (Paper: Warga Mengawasi APBN) ---------- */
-function tampilAspirasi() {
+function mulaiAspirasi(rows) {
+  const proof = evidenceText(rows);
+  if (!proof) return toast('Bukti dokumen belum lengkap untuk menyusun rujukan.');
+  tampilAspirasi({ proof, topic: rows[0]?.topik });
+  pindahTab('aspirasi');
+  $('asp-data').scrollIntoView({ behavior: 'smooth' });
+  toast('Data dan tautan sumber telah dimasukkan. Lengkapi masalah serta usulanmu.');
+}
+function tampilAspirasi(seed = {}) {
   const topikList = [
     'Pendidikan (Sekolah, Beasiswa, Fasilitas Belajar)',
     'Kesehatan (BPJS PBI, Layanan RS, Skrining Kesehatan)',
@@ -596,10 +609,13 @@ function tampilAspirasi() {
 
   const textData = el('textarea', {
     id: 'asp-data',
-    placeholder: 'Sebutkan angka atau dokumen resmi dari Transkeu.ID (misal: "APBN 2026 mengalokasikan PIP Rp11,2 T untuk 16 juta siswa menurut Konpers APBN KiTa Oktober 2026")',
+    placeholder: 'Sebutkan angka atau dokumen resmi dari Transkeu.ID (misal: "Pilih bukti dari jawaban atau Jejak Anggaran agar jenis angka, periode, dan tautan ikut tersalin")',
     rows: '2',
-    maxlength: '400',
+    maxlength: '12000',
   });
+
+  textData.value = seed.proof ?? '';
+  if (seed.topic) { const idx = ['pendidikan','kesehatan','perlinsos','infrastruktur','subsidi_energi','pajak'].indexOf(seed.topic); if (idx >= 0) { for (const option of selectTopik.options) option.selected = option.value === topikList[idx]; } }
 
   const textMasukan = el('textarea', {
     id: 'asp-masukan',
@@ -684,7 +700,7 @@ function tampilAspirasi() {
   $('aspirasi-data').replaceChildren(
     kepalaBagian('Aspirasi Berbasis Data', 'Ubah Suara Warga Jadi Masukan Berbobot', 'Gunakan data anggaran resmi untuk menyusun kritik dan masukan yang kredibel, santun, dan dapat dipertanggungjawabkan kepada instansi terkait.', 'aspirasi'),
     el('div', { class: 'aspirasi-intro kartu' },
-      el('p', {}, 'Kritik publik sering kali diabaikan karena dianggap sekadar keluhan tanpa dasar. Transkeu.ID memfasilitasi Anda menghubungkan persoalan nyata di lapangan dengan angka alokasi resmi negara, sehingga masukan Anda memiliki bobot advokasi yang kuat.'),
+      el('p', {}, 'Hubungkan masalah yang kamu alami dengan data dan dokumen yang relevan. Periksa kembali kutipan sebelum mengirim. Angka nasional belum membuktikan kondisi di satu daerah; tanggapan instansi tidak dijanjikan.'),
     ),
     form,
     wadahDraf,

@@ -78,11 +78,11 @@ export async function handleQuestion(body, { env = process.env, ip = 'local', fe
 
   const finish = async result => ({
     code: 200,
-    body: await attachImpacts(await attachArticles(result, input.pertanyaan, input.riwayat, { env, logger }), input.pertanyaan, input.konteks_lapangan, { env, logger }),
+    body: await attachImpacts(await attachArticles(result, input.pertanyaan, input.riwayat, { env, logger }), input.pertanyaan, input.konteks_lapangan, { env, logger, history: input.riwayat }),
   });
 
   const fallback = code => ({
-    ...jawab(input.pertanyaan, corpus),
+    ...jawab(retrieve(input.pertanyaan, input.riwayat).question, corpus),
     ai: false,
     mode: 'dasar',
     catatan_mode: notes[code] ?? 'Layanan AI sedang tidak tersedia.',

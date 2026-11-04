@@ -47,7 +47,7 @@ Saya yang bertanda tangan di bawah ini (${namaInisial}${lokasi ? `, domisili: ${
 ${masalah.trim()}
 
 2. Rujukan Data APBN / Dokumen Resmi Terkait:
-${dataPendukung ? dataPendukung.trim() : 'Berdasarkan rujukan keterbukaan informasi publik APBN TA 2026 (Transkeu.ID).'}
+${dataPendukung ? dataPendukung.trim() : 'Belum ada dokumen pendukung yang dipilih. Mohon informasi dan penjelasan dari instansi terkait.'}
 
 3. Masukan / Usulan Perbaikan yang Diharapkan:
 ${masukan.trim()}
