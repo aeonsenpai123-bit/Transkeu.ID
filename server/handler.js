@@ -1,3 +1,4 @@
+import { hasilInstansi } from '../src/instansi.js';
 import { attachClaimCheck } from './claim-check.js';
 import { providerConfig } from './provider.js';
 import { attachImpacts } from './impacts.js';
@@ -89,6 +90,9 @@ export async function handleQuestion(body, { env = process.env, ip = 'local', fe
     catatan_mode: notes[code] ?? 'Layanan AI sedang tidak tersedia.',
     request_id,
   });
+
+  const institutional = hasilInstansi(input.pertanyaan, input.riwayat);
+  if (institutional) return finish({ ...institutional, request_id });
 
   const activeEnv = env;
   const config = providerConfig(activeEnv);

@@ -1,3 +1,4 @@
+import { hasilInstansi } from './instansi.js';
 // Mesin jawab berbasis aturan: memahami pertanyaan, memilih baris tabel fakta, menyusun kartu jawaban.
 // Tidak ada angka yang dibuat di sini; semua angka berasal dari baris `fakta`.
 // shortcut: pencocokan kata kunci, bukan model bahasa; ganti dengan LLM yang hanya memilih id baris bila pertanyaan makin beragam.
@@ -53,6 +54,8 @@ function pilihBaris(baris) {
 }
 
 export function jawab(pertanyaan, { fakta, kegunaan = [], topik, istilah = [] }) {
+  const institutional = hasilInstansi(pertanyaan);
+  if (institutional) return institutional;
   const t = normal(pertanyaan);
   if (!t) return tidakTersedia('Pertanyaan kosong.');
 

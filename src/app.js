@@ -1,3 +1,4 @@
+import { rankingInstansi, renderInstansi, CATATAN_INSTANSI } from './instansi.js';
 import { renderClaimCheck } from './claim-check-ui.js';
 import { documentUrl, traceEvidence, evidenceText } from './evidence.js';
 import { renderImpacts } from './impacts-ui.js';
@@ -174,7 +175,9 @@ function kepalaJawaban(hasil) {
   return el('div', { class: 'jawaban-kepala' },
     el('span', { class: 'avatar', 'aria-hidden': 'true' }, ikon('kilau')),
     el('strong', {}, 'Transkeu'),
-    hasil.ai
+    hasil.mode === 'data_resmi'
+      ? el('span', { class: 'mode' }, 'Data dokumen resmi')
+      : hasil.ai
       ? el('span', { class: 'mode', title: 'AI menjelaskan; semua angka diisi program dari tabel fakta' }, 'AI · angka dari tabel fakta')
       : el('span', { class: 'mode dasar', style: 'cursor:pointer', onclick: bukaPengaturanAI, title: hasil.catatan_mode ? `${hasil.catatan_mode} (Ketuk untuk informasi)` : 'AI sedang tidak aktif; ketuk untuk informasi' }, 'Mode dasar'),
     !hasil.ai && hasil.catatan_mode ? el('span', { class: 'catatan-kecil' }, hasil.catatan_mode) : null);
@@ -207,6 +210,7 @@ function kartuJawaban(pertanyaan, hasil) {
   if (hasil.status === 'istilah') {
     return el('article', { class: 'kartu jawaban' }, kepalaJawaban(hasil),
       el('p', { class: 'ringkas' }, el('strong', {}, hasil.istilah.istilah), `: ${hasil.istilah.arti}`),
+      renderInstansi(hasil.belanja_instansi, { el, onBukaSumber: bukaSumber, onTanya: tanya }),
       renderImpacts(hasil.hasil_lapangan, { el }),
       renderArticles(hasil.bacaan_terkait, { el }),
       renderClaimCheck(hasil.pemeriksaan_klaim, { el }),
@@ -218,6 +222,7 @@ function kartuJawaban(pertanyaan, hasil) {
       el('p', { class: 'ringkas' }, ikon('peringatan'), el('span', {}, hasil.pesan ?? PESAN_TIDAK_TERSEDIA)),
       hasil.alasan ? el('p', {}, hasil.alasan) : null,
       el('a', { class: 'tombol', href: hasil.portal.url, target: '_blank', rel: 'noopener noreferrer' }, ikon('keluar'), `Buka ${hasil.portal.nama}`),
+      renderInstansi(hasil.belanja_instansi, { el, onBukaSumber: bukaSumber, onTanya: tanya }),
       renderImpacts(hasil.hasil_lapangan, { el }),
       renderArticles(hasil.bacaan_terkait, { el }),
       renderClaimCheck(hasil.pemeriksaan_klaim, { el }),
@@ -252,7 +257,8 @@ function kartuJawaban(pertanyaan, hasil) {
       el('button', { type: 'button', class: 'chip', onclick: () => mulaiAspirasi(hasil.angka) }, 'Susun aspirasi dari bukti ini'),
       el('button', { type: 'button', class: 'chip', onclick: () => { tampilJejak(hasil.angka[0].topik); pindahTab('jejak'); window.scrollTo(0, 0); } }, 'Telusuri program terkait')),
     hasil.batasan?.length > 0 && el('div', { class: 'batasan' }, el('div', { class: 'judul-kecil', style: 'margin:0' }, ikon('info'), 'Batasan'), hasil.batasan.map((t) => el('p', {}, t))),
-    renderImpacts(hasil.hasil_lapangan, { el }),
+    renderInstansi(hasil.belanja_instansi, { el, onBukaSumber: bukaSumber, onTanya: tanya }),
+      renderImpacts(hasil.hasil_lapangan, { el }),
       renderArticles(hasil.bacaan_terkait, { el }),
       renderClaimCheck(hasil.pemeriksaan_klaim, { el }),
       chipsLanjutan(hasil.lanjutan),
@@ -437,6 +443,7 @@ $('saran-hero').append(...contohAwal.map((q) => el('button', { type: 'button', o
 $('isi-beranda').append(
   bagianArus(),
   bagianPembagian(),
+  bagianInstansi(),
   el('div', { class: 'bagian' },
     kepalaBagian('Topik populer', 'Enam topik yang paling sering ditanya', 'Anggaran, yang sudah terpakai, dan cara membacanya.', 'topik'),
     el('div', { class: 'grid-topik' }, topik.filter((t) => !t.tersembunyi).map(kartuTopik))),
@@ -776,3 +783,11 @@ $('unduh-umpan').addEventListener('click', () => {
 $('obrolan').append(sapa());
 pindahTab('beranda');
 aturChips(contohAwal);
+
+function bagianInstansi() {
+ const select=el('select',{'aria-label':'Filter jenis instansi',class:'tombol'},el('option',{value:'semua'},'Semua K/L dalam daftar'),el('option',{value:'kementerian'},'Kementerian saja'));
+ const body=el('div');
+ const draw=()=>{const rows=rankingInstansi({jenis:select.value||'semua'});body.replaceChildren(renderVisual({tipe:'batang',judul:'Peringkat pagu awal instansi',periode:'TA 2026 · UU APBN',satuan:'Rp triliun',items:rows},{el,onBukaSumber:bukaSumber}),renderInstansi({rows,catatan:CATATAN_INSTANSI},{el,onBukaSumber:bukaSumber,onTanya:tanya}));};
+ select.addEventListener('change',draw);draw();
+ return el('section',{class:'bagian',id:'belanja-instansi'},kepalaBagian('Belanja per instansi','Siapa mengelola pagu terbesar?','Pilih instansi untuk membaca tujuan program, capaian, dan sumbernya.','gedung'),select,body);
+}
