@@ -542,3 +542,27 @@ blockquote.kutipan { margin: 8px 0 16px; padding: 12px 14px; background: var(--b
 .kartu-bacaan h4 { margin: 10px 0; line-height: 1.5; }
 .kartu-bacaan a { color: #1749b5; text-decoration: underline; text-underline-offset: 3px; }
 .hasil-lapangan, .jejak-bukti-lapangan { border-top: 1px solid #d9e4f2; margin-top: 16px; padding-top: 16px; }
+
+/* Current visual renderer: horizontal bars with source actions. */
+.visual-wadah { background: var(--kartu, #fff); border: 1px solid var(--garis); border-radius: 16px; padding: 16px; margin: 16px 0; display: grid; gap: 16px; min-width: 0; }
+.visual-info-judul { min-width: 0; flex: 1; }
+.visual-meta-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+.visual-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 8px; background: #edf3ff; color: var(--biru-700); font-size: 13px; }
+.baris-batang { display: grid; gap: 7px; padding: 6px 0; }
+.batang-label-wadah { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.batang-nama { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.batang-nilai { font-size: 14px; font-weight: 800; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.batang-rel { width: 100%; height: 14px; border-radius: 999px; background: #e4eaf4; overflow: hidden; }
+.batang-isi { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #1749a8, #4385f5); }
+.batang-realisasi .batang-isi { background: #17834b; }
+.tombol-sumber-mini, .tombol-tabel-sumber { display: inline-flex; gap: 6px; align-items: center; min-height: 44px; border: 0; border-radius: 8px; padding: 6px 10px; background: #edf3ff; color: #1749a8; font: inherit; font-size: 13px; cursor: pointer; }
+.visual-badan-tabel { overflow-x: auto; }
+.tabel-visual { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tabel-visual th, .tabel-visual td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--garis); vertical-align: top; }
+.visual-badan-tabel[hidden], .visual-badan-grafik[hidden] { display: none; }
+#belanja-instansi summary { min-height: 44px; cursor: pointer; font-weight: 700; line-height: 1.5; }
+#belanja-instansi select { max-width: 100%; }
+@media (max-width: 480px) {
+ .batang-label-wadah { display: grid; gap: 2px; }
+ .visual-wadah { padding: 12px; }
+}
