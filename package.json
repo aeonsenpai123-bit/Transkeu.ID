@@ -6,6 +6,7 @@
     "start": "node --env-file-if-exists=.env scripts/serve.js",
     "test": "node --test",
     "audit:data": "node scripts/audit-data.js",
+    "eval:models": "node --env-file-if-exists=.env scripts/eval-models.js",
     "db:seed-artikel": "node --env-file-if-exists=.env scripts/seed-artikel.js",
     "sync:melek": "node scripts/sync-melek-apbn.js"
   },

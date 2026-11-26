@@ -128,6 +128,18 @@ export const fakta = [
     kutipan: 'ANGGARAN PENDIDIKAN Rp574,2 T s.d. 30 September 2026 [...] Realisasi 2022 s.d. 2026 per 30 September (Triliun Rp)',
     catatan: 'Terdiri atas belanja pemerintah pusat, transfer ke daerah, dan pembiayaan.',
   }),
+  baris(DJA_APBN_2026, {
+    id: 'beasiswa-2026-anggaran', topik: 'pendidikan', subtopik: 'program', pos: 'Alokasi paket PIP, KIP Kuliah, dan beasiswa lainnya',
+    cakupan: 'paket_beasiswa', jenis_angka: 'Anggaran', tahun_anggaran: 2026, nilai: 63.8, halaman_atau_tabel: null,
+    kutipan: 'Program PIP/KIP Kuliah/Beasiswa lainnya dengan alokasi sebesar Rp63,8 triliun',
+    catatan: 'Pagu gabungan beberapa program beasiswa (PIP, KIP Kuliah, dan beasiswa lain); bukan pagu PIP saja.',
+  }),
+  baris(KONPERS_OKT, {
+    id: 'pip-2026-realisasi-sep', topik: 'pendidikan', subtopik: 'program', pos: 'Penyaluran Program Indonesia Pintar (PIP)',
+    cakupan: 'pip', jenis_angka: 'Realisasi', tahun_anggaran: 2026, ...SEP_2026, nilai: 11.2, halaman_atau_tabel: 'hlm. 29',
+    kutipan: 'Penyaluran PIP Rp11,2 T untuk 16 juta siswa',
+    catatan: 'Realisasi khusus PIP untuk 16 juta siswa. Tidak boleh dibagi dengan pagu gabungan beasiswa Rp63,8 triliun karena cakupannya berbeda.',
+  }),
 
   // ---------- Kesehatan ----------
   baris(KONPERS_OKT, {

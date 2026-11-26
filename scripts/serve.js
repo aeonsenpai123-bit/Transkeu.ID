@@ -15,6 +15,7 @@ const mime = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.json': 'application/json',
+  '.webmanifest': 'application/manifest+json',
 };
 
 http.createServer(async (req, res) => {
@@ -63,8 +64,8 @@ http.createServer(async (req, res) => {
       return;
     }
     const file = resolve(root, '.' + decodeURIComponent(path === '/' ? '/index.html' : path));
-    const rel = file.slice(root.length + 1);
-    if (!file.startsWith(root + sep) || !(rel === 'index.html' || ['src/', 'data/', 'assets/', 'docs/'].some(p => rel.startsWith(p)))) {
+    const rel = file.slice(root.length + 1).replace(/\\/g, '/');
+    if (!file.startsWith(root + sep) || !(rel === 'index.html' || rel === 'manifest.webmanifest' || rel === 'sw.js' || ['src/', 'data/', 'assets/', 'docs/'].some(p => rel.startsWith(p)))) {
       res.writeHead(404).end();
       return;
     }

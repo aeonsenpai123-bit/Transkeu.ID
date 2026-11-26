@@ -36,7 +36,12 @@ export function traceEvidence(item) {
   const available = s => Boolean(documentUrl(s) && s.halaman_atau_tabel && s.kutipan);
   const comparable = Boolean(pair && a.cakupan === r.cakupan && a.tahun_anggaran === r.tahun_anggaran && a.satuan === r.satuan && Number.isFinite(a.nilai) && a.nilai > 0 && Number.isFinite(r.nilai) && available(a) && available(r));
   const warnings = [];
-  if (!comparable) warnings.push('Pagu dan realisasi belum dapat dihitung sebagai persentase satu program: cakupan atau kelengkapan datanya berbeda.');
+  if (!comparable) {
+    const ekstra = a.cakupan === 'paket-beasiswa'
+      ? ` Pagu ${formatNilai(a)} mencakup gabungan beasiswa (PIP, KIP Kuliah, dan lainnya), sedangkan realisasi ${formatNilai(r)} hanya untuk ${item.nama}, sehingga persentase penyerapan tidak dihitung.`
+      : '';
+    warnings.push(`Pagu dan realisasi belum dapat dihitung sebagai persentase satu program: cakupan atau kelengkapan datanya berbeda.${ekstra}`);
+  }
   if (c.tahun_anggaran !== tahun) warnings.push(`Capaian yang dimuat berasal dari TA ${c.tahun_anggaran}; bukan hasil belanja TA ${tahun}.`);
   return { stages, comparable, ratio: comparable ? r.nilai / a.nilai * 100 : null, warnings };
 }

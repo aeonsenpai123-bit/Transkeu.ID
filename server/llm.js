@@ -85,7 +85,7 @@ export async function explain(question, history, evidence, { env = process.env, 
       if (!rawText) throw new ProviderError('provider_invalid_response');
     } else if (config.provider === 'gemini') {
       // Jalur Google Gemini
-      modelName = env.GEMINI_MODEL || 'gemini-2.5-flash';
+      modelName = config.model;
       const promptText = JSON.stringify({ ...payload, ...(repair ? { repair_instruction: repair } : {}) });
       const geminiBody = {
         contents: [{ role: 'user', parts: [{ text: promptText }] }],
@@ -94,7 +94,7 @@ export async function explain(question, history, evidence, { env = process.env, 
           responseMimeType: 'application/json',
           responseSchema: stripAdditionalProperties(OUTPUT_SCHEMA),
           temperature: 0.1,
-          maxOutputTokens: 2600,
+          maxOutputTokens: 4096,
         },
       };
 

@@ -1,3 +1,4 @@
+import { jejakAnggaran } from '../data/jejak.js';
 import { hasilInstansi } from '../src/instansi.js';
 import { attachClaimCheck } from './claim-check.js';
 import { providerConfig } from './provider.js';
@@ -84,7 +85,7 @@ export async function handleQuestion(body, { env = process.env, ip = 'local', fe
   });
 
   const fallback = code => ({
-    ...jawab(retrieve(input.pertanyaan, input.riwayat).question, corpus),
+    ...jawab(input.pertanyaan, { ...corpus, jejak: jejakAnggaran }, input.riwayat),
     ai: false,
     mode: 'dasar',
     catatan_mode: notes[code] ?? 'Layanan AI sedang tidak tersedia.',
